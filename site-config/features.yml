@@ -1,0 +1,10 @@
+publicPages: true
+docs: true
+dashboard:
+  projects: true
+  ideas: true
+  tasks: true
+  kanban: true
+  review: true
+  aiPlanner: true
+

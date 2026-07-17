@@ -1,0 +1,22 @@
+route: /about
+title: About this starter
+description: How configuration, content, application code, and live data stay separate.
+published: true
+sections:
+  - type: hero
+    eyebrow: Configuration-driven by design
+    title: Change presentation without weakening application boundaries.
+    description: YAML selects approved layouts and actions, Markdown holds editorial content, and PostgreSQL remains the source of truth for collaborative data.
+    layout: centered
+  - type: markdown
+    source: about.md
+  - type: buttonGroup
+    alignment: center
+    buttons:
+      - label: Read the architecture guide
+        action: readArchitecture
+        variant: primary
+      - label: Back home
+        action: goHome
+        variant: secondary
+

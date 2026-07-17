@@ -1,0 +1,59 @@
+public:
+  - label: Home
+    href: /
+  - label: About
+    href: /about
+    feature: publicPages
+  - label: Docs
+    href: /docs
+    feature: docs
+  - label: Sign in
+    action: signIn
+    visibility: guest
+  - label: Create account
+    action: createAccount
+    visibility: guest
+    variant: primary
+  - label: Dashboard
+    action: openDashboard
+    visibility: authenticated
+    variant: primary
+
+dashboard:
+  - label: Overview
+    href: /dashboard
+    icon: gauge
+  - label: Projects
+    href: /dashboard/projects
+    icon: boxes
+    feature: dashboard.projects
+  - label: Idea inbox
+    href: /dashboard/ideas
+    icon: lightbulb
+    feature: dashboard.ideas
+  - label: Tasks
+    href: /dashboard/tasks
+    icon: checkSquare
+    feature: dashboard.tasks
+  - label: Kanban
+    href: /dashboard/kanban
+    icon: columns
+    feature: dashboard.kanban
+  - label: Weekly review
+    href: /dashboard/review
+    icon: refresh
+    feature: dashboard.review
+  - label: AI planner
+    href: /dashboard/assistant
+    icon: sparkles
+    feature: dashboard.aiPlanner
+  - label: Markdown docs
+    href: /docs
+    icon: bookOpen
+    feature: docs
+
+dashboardFooter:
+  - label: Sign out
+    action: signOut
+    icon: logOut
+

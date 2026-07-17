@@ -1,0 +1,8 @@
+name: WorkAtlas
+shortName: WA
+description: A Markdown-friendly, self-hosted project and idea management starter.
+tagline: Turn scattered ideas into a controlled portfolio of work.
+locale: en
+branding:
+  logoIcon: boxes
+  accent: indigo

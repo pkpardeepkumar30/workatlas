@@ -1,0 +1,35 @@
+heading:
+  eyebrow: Workspace
+  welcomePrefix: Welcome
+  description: Keep every active project tied to a concrete next action.
+  button:
+    label: Manage projects
+    action: manageProjects
+    variant: dark
+
+widgets:
+  - id: portfolio-metrics
+    type: metricGrid
+    columns: 4
+    metrics:
+      - label: Active projects
+        value: activeProjects
+        icon: folderKanban
+      - label: Ideas
+        value: ideas
+        icon: lightbulb
+      - label: Open tasks
+        value: openTasks
+        icon: checkCircle
+      - label: Overdue
+        value: overdueTasks
+        icon: alertTriangle
+  - id: current-projects
+    type: projectList
+    title: Current projects
+    limit: 5
+  - id: upcoming-tasks
+    type: taskList
+    title: Upcoming tasks
+    limit: 6
+

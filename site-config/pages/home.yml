@@ -1,0 +1,43 @@
+route: /
+title: WorkAtlas
+description: A self-hosted project and idea management starter.
+published: true
+sections:
+  - type: hero
+    eyebrow: Self-hosted and Markdown friendly
+    title: Turn scattered ideas into a controlled portfolio of work.
+    description: A modern starter for researchers, engineers and independent builders who need ideas, projects, tasks and public documentation in one maintainable system.
+    layout: split
+    callout:
+      title: Weekly focus
+      badge: 3 active
+      items:
+        - Complete benchmark figures
+        - Audit the numerical formulation
+        - Design the healthcare test case
+  - type: buttonGroup
+    alignment: left
+    buttons:
+      - label: Create account
+        action: createAccount
+        variant: primary
+      - label: Read documentation
+        action: readDocs
+        variant: secondary
+  - type: featureGrid
+    columns: 4
+    items:
+      - title: Execution dashboard
+        description: Projects, tasks, ideas, Kanban and weekly review in one focused interface.
+        icon: layoutDashboard
+      - title: Markdown-managed content
+        description: Edit public pages and documentation without touching React components.
+        icon: fileText
+      - title: PostgreSQL foundation
+        description: Multi-user data isolation, migrations and a clean path from desktop to VPS.
+        icon: database
+      - title: Controlled extension points
+        description: Named registries allow reusable UI and safe actions without executable YAML.
+        icon: shieldCheck
+  - type: markdown
+    source: home.md
