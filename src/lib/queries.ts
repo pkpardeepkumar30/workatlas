@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, ne, type SQL } from "drizzle-orm";
 import type { Priority } from "@/lib/priority-config";
-import { projects, tasks } from "@/db/schema";
+import { dataTransferAuditLogs, projects, tasks } from "@/db/schema";
 import { db } from "@/lib/db";
 
 export function getProjects(ownerId: string) {
@@ -68,6 +68,13 @@ export function getProjectOptions(ownerId: string) {
     .from(projects)
     .where(eq(projects.ownerId, ownerId))
     .orderBy(asc(projects.title));
+}
+
+export function getDataTransferAuditLogs(ownerId: string, limit = 10) {
+  return db.select().from(dataTransferAuditLogs)
+    .where(eq(dataTransferAuditLogs.userId, ownerId))
+    .orderBy(desc(dataTransferAuditLogs.createdAt))
+    .limit(Math.min(Math.max(limit, 1), 50));
 }
 
 export async function getProject(ownerId: string, projectId: string) {

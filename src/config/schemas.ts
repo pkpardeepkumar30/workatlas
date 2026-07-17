@@ -20,6 +20,7 @@ export const featureIdSchema = z.enum([
   "dashboard.kanban",
   "dashboard.review",
   "dashboard.aiPlanner",
+  "dashboard.dataTransfer",
 ]);
 
 export type FeatureId = z.infer<typeof featureIdSchema>;
@@ -166,6 +167,7 @@ export const featuresConfigSchema = z
         kanban: z.boolean(),
         review: z.boolean(),
         aiPlanner: z.boolean(),
+        dataTransfer: z.boolean(),
       })
       .strict(),
   })

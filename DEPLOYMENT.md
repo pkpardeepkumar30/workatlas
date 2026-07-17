@@ -11,5 +11,6 @@ In every production mode:
 - set `SESSION_COOKIE_SECURE=true`;
 - store secrets outside Git;
 - use committed migrations through `npm run db:migrate`;
+- verify them with `npm run db:migrations:verify`; destructive SQL is blocked from automation;
 - back up PostgreSQL before schema or infrastructure changes;
 - use object storage for any future uploads.

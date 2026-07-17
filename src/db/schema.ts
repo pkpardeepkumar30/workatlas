@@ -3,6 +3,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -11,6 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const userRole = pgEnum("user_role", ["admin", "member"]);
 export const projectStatus = pgEnum("project_status", [
@@ -136,6 +138,7 @@ export const projects = pgTable(
     repositoryUrl: text("repository_url"),
     isPublic: boolean("is_public").notNull().default(false),
     targetDate: date("target_date"),
+    tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -161,6 +164,7 @@ export const tasks = pgTable(
     priority: priority("priority").notNull().default("medium"),
     dueDate: date("due_date"),
     position: integer("position").notNull().default(0),
+    tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -213,6 +217,28 @@ export const comments = pgTable(
   ],
 );
 
+export const dataTransferAuditLogs = pgTable(
+  "data_transfer_audit_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    format: text("format").notNull(),
+    status: text("status").notNull(),
+    projectCount: integer("project_count").notNull().default(0),
+    taskCount: integer("task_count").notNull().default(0),
+    commentCount: integer("comment_count").notNull().default(0),
+    details: jsonb("details").$type<Record<string, string | number | boolean | null>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("data_transfer_audit_logs_user_idx").on(table.userId),
+    index("data_transfer_audit_logs_created_at_idx").on(table.createdAt),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
@@ -222,3 +248,4 @@ export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
+export type DataTransferAuditLog = typeof dataTransferAuditLogs.$inferSelect;

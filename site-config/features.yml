@@ -7,4 +7,4 @@ dashboard:
   kanban: true
   review: true
   aiPlanner: true
-
+  dataTransfer: true

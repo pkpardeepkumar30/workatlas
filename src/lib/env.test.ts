@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deploymentEnvSchema, getAuthEnvironment } from "@/lib/env";
+import { deploymentEnvSchema, getAuthEnvironment, validateDeploymentEnv } from "@/lib/env";
 
 const validEnvironment = {
   DATABASE_URL: "postgresql://user:password@example.test/workatlas",
@@ -33,6 +33,30 @@ describe("deployment environment", () => {
       REGISTRATION_ENABLED: "true",
       VERCEL_ENV: "production",
       NODE_ENV: "production",
+    })).toThrow(/SESSION_COOKIE_SECURE/);
+  });
+
+  it("does not require the administrative migration URL in the Vercel runtime", () => {
+    expect(validateDeploymentEnv({ ...validEnvironment, DATABASE_URL_DIRECT: "", VERCEL_ENV: "production", NODE_ENV: "production" }).DATABASE_URL_DIRECT).toBeUndefined();
+  });
+
+  it("allows insecure cookies only for the explicit localhost production preview", () => {
+    expect(getAuthEnvironment({
+      SESSION_SECRET: validEnvironment.SESSION_SECRET,
+      SESSION_COOKIE_SECURE: "false",
+      REGISTRATION_ENABLED: "true",
+      NODE_ENV: "production",
+      WORKATLAS_LOCAL_PREVIEW: "true",
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    }).secureCookie).toBe(false);
+
+    expect(() => getAuthEnvironment({
+      SESSION_SECRET: validEnvironment.SESSION_SECRET,
+      SESSION_COOKIE_SECURE: "false",
+      REGISTRATION_ENABLED: "true",
+      NODE_ENV: "production",
+      WORKATLAS_LOCAL_PREVIEW: "true",
+      NEXT_PUBLIC_APP_URL: "https://workatlas.example.test",
     })).toThrow(/SESSION_COOKIE_SECURE/);
   });
 

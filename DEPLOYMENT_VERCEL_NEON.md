@@ -5,7 +5,7 @@ This guide keeps WorkAtlas as one Next.js modular monolith. Vercel runs the appl
 ## Architecture decisions
 
 - Runtime queries use `drizzle-orm/node-postgres` with `pg` and Neon's pooled `DATABASE_URL`. The application reuses a small pool per warm serverless instance. This preserves transactions and the existing Drizzle query layer.
-- Administrative migrations use the direct `DATABASE_URL_DIRECT` through `scripts/migrate.ts`. Application requests never run migrations.
+- Administrative migrations use the direct `DATABASE_URL_DIRECT` through `scripts/migrate.ts`. Application requests and Vercel builds never run migrations. The runner accepts committed, additive, forward-only SQL only.
 - YAML and Markdown are committed, read-only production assets. Next.js output-file tracing explicitly includes `site-config` and `content`.
 - Authentication uses opaque random cookies whose HMAC hashes and expiration timestamps are stored in PostgreSQL. Logout deletes the server-side session.
 - Vercel uses the standard Next.js output. Standalone output is generated only by `npm run build:standalone` for Docker or self-hosting.
@@ -15,7 +15,7 @@ This guide keeps WorkAtlas as one Next.js modular monolith. Vercel runs the appl
 | Variable | Required in production | Scope | Purpose |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | Yes | Server only | Neon pooled connection used by application requests |
-| `DATABASE_URL_DIRECT` | Yes | Migration/admin environments only | Neon direct connection used by committed migrations and exports |
+| `DATABASE_URL_DIRECT` | No | Local operator environment only | Neon direct connection used only by operator migrations and backups; do not expose it to Vercel runtime functions |
 | `SESSION_SECRET` | Yes | Server only | At least 32 characters; keys stored session-token hashes |
 | `SESSION_COOKIE_SECURE` | Yes | Server only | Must be `true` on HTTPS production |
 | `NEXT_PUBLIC_APP_NAME` | Yes | Public | Display/metadata name, normally `WorkAtlas` |
@@ -45,12 +45,10 @@ Store the result directly in Vercel. Do not put it in Git, documentation, screen
 3. From Neon's connection details, copy both connection strings:
    - pooled URL → `DATABASE_URL`
    - direct URL → `DATABASE_URL_DIRECT`
-4. In a local PowerShell session, set the URLs without adding them to a file:
+4. Put the direct URL in ignored `.env.release.local` as described in the README, then use the guarded release workflow. For an initial empty database, apply committed migrations with:
 
    ```powershell
-   $env:DATABASE_URL = "<Neon pooled URL>"
-   $env:DATABASE_URL_DIRECT = "<Neon direct URL>"
-   npm run db:migrate
+   node --env-file=.env.release.local --import tsx scripts/migrate.ts
    ```
 
 5. Verify migration history in the Neon SQL editor:
@@ -61,21 +59,38 @@ Store the result directly in Vercel. Do not put it in Git, documentation, screen
    ORDER BY id;
    ```
 
-   A new deployment should list every committed migration through `0003_nice_gargoyle`.
+   A current deployment should list every committed migration through `0005_aromatic_peter_parker`.
 6. Verify that `users`, `sessions`, `projects`, `tasks`, `comments`, and `project_members` exist.
 
-Production uses committed SQL migrations. Never use `npm run db:push` against Neon production. Vercel builds and GitHub Actions do not migrate the database.
+Production uses committed SQL migrations. `db:push` is intentionally unavailable. Vercel builds and GitHub Actions never migrate, reset, truncate, recreate or seed the database. Neon remains persistent when Vercel replaces application code.
 
-### Backup/export
+Before release, `npm run db:migrations:verify` rejects `DROP`, `TRUNCATE`, live-table `DELETE`/seed statements, renames and destructive type conversions. The release script locally commits reviewed migrations before applying them to Neon; if migration fails, it does not push or deploy. Use one migration operator at a time.
 
-Neon branches and point-in-time restore availability depend on the selected plan. Before a risky migration, create a protected Neon branch or use `pg_dump` with the direct URL:
+### Backup before a risky migration
+
+Safe additive migrations do not rewrite existing records. Before any risky data backfill, constraint, index, infrastructure or manually reviewed contract migration, create both a Neon restore point/branch when the plan supports it and a PostgreSQL dump:
 
 ```powershell
-$env:PGDATABASE = $env:DATABASE_URL_DIRECT
-pg_dump --dbname=$env:PGDATABASE --format=custom --file="workatlas-$(Get-Date -Format yyyyMMdd-HHmm).dump"
+.\backup-production.cmd
 ```
 
-Keep dumps encrypted and outside the repository. `*.dump` and `*.sql.backup` are ignored by Git.
+This wrapper validates the direct Neon hostname, runs PostgreSQL 17 `pg_dump --format=custom --no-owner --no-acl` in Docker, and writes `backups/workatlas-neon-<UTC timestamp>.dump` plus a SHA-256 manifest. The directory is ignored by Git. Verify the file is non-empty, retain the printed hash, and copy both files to separate encrypted storage. A personal JSON/Excel export is useful for user portability but is not a substitute for a full PostgreSQL backup.
+
+Automated migration remains blocked when destructive SQL is detected, even if a backup exists. Use an expand/migrate/contract sequence: add compatible schema, deploy compatible code, backfill in bounded reviewed batches, verify counts, and only then schedule the contract operation as a separate manual maintenance change.
+
+### Rollback and recovery
+
+Do not create down migrations that delete data. If application code fails after an additive migration, immediately use Vercel **Deployments → previous healthy deployment → Promote to Production**; additive schema remains backward compatible. Diagnose and ship a new forward migration.
+
+For data recovery, restore into a new Neon branch/database first rather than overwriting the running production database:
+
+```powershell
+# Set this to the direct URL of a NEW empty recovery database.
+$env:PGDATABASE = "<new recovery database direct URL>"
+pg_restore --dbname=$env:PGDATABASE --clean --if-exists --no-owner --no-acl .\backups\workatlas-neon-YYYYMMDD-HHMMSS.dump
+```
+
+Validate migration history, table counts, several user/project/task/comment hierarchies, Kanban positions, authentication and `/api/health`. During a maintenance window, point Vercel's pooled `DATABASE_URL` and operator `DATABASE_URL_DIRECT` to the verified recovery database and redeploy. Keep the old database read-only until final verification. Never run `--clean` against the active production database.
 
 ### Preview databases
 
@@ -109,7 +124,6 @@ Never force-push deployment preparation over an existing remote.
 
    ```text
    DATABASE_URL=<Neon pooled URL>
-   DATABASE_URL_DIRECT=<Neon direct URL; required for operator migrations, not application queries>
    SESSION_SECRET=<generated secret of at least 32 characters>
    SESSION_COOKIE_SECURE=true
    NEXT_PUBLIC_APP_NAME=WorkAtlas
@@ -184,7 +198,7 @@ In Vercel, open **Project Settings → Domains**, add the chosen domain, and app
 
 ## Operational limitations
 
-- Audit logging and automated session cleanup are not yet implemented. Expired rate-limit records are opportunistically cleaned during normal traffic; a scheduled cleanup job may be appropriate at larger scale.
+- Export/import activity is audit logged per user. General administrative audit logging and automated expired-session cleanup are separate concerns; a scheduled cleanup job may be appropriate at larger scale.
 - Uploads are not implemented. Vercel's filesystem is ephemeral; future uploads must use object storage through a dedicated abstraction.
 - YAML and Markdown changes require a Git commit and redeployment; they are intentionally read-only at runtime.
 - Run one migration operator at a time. Do not point simultaneous preview deployments at production migration credentials.

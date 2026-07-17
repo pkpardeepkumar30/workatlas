@@ -19,7 +19,7 @@ npm run dev
 
 Open `http://localhost:3000`. `DATABASE_URL_DIRECT` may remain empty locally; migrations then use `DATABASE_URL`.
 
-Use `npm run db:generate` after changing `src/db/schema.ts`, review the generated SQL, and commit the migration. `npm run db:push` is available only for disposable local prototyping; normal local and all production workflows use committed migrations.
+Use `npm run db:generate` after changing `src/db/schema.ts`, review the generated SQL, run `npm run db:migrations:verify`, and commit the migration. `db:push` is intentionally unavailable: local and production workflows both use committed, forward-only migrations so the tested path matches production.
 
 ## Production-style local test
 
@@ -53,6 +53,7 @@ npm run typecheck
 npm run lint
 npm test
 npm run db:check
+npm run db:migrations:verify
 npm run build
 npm run build:verify
 ```

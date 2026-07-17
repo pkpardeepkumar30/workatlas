@@ -47,6 +47,10 @@ dashboard:
     href: /dashboard/assistant
     icon: sparkles
     feature: dashboard.aiPlanner
+  - label: Export / import
+    href: /dashboard/data-transfer
+    icon: database
+    feature: dashboard.dataTransfer
   - label: Markdown docs
     href: /docs
     icon: bookOpen
@@ -56,4 +60,3 @@ dashboardFooter:
   - label: Sign out
     action: signOut
     icon: logOut
-

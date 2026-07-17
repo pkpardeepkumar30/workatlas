@@ -47,7 +47,6 @@ export function validateDeploymentEnv(environment: NodeJS.ProcessEnv = process.e
   if (!result.success) throw new Error(formatEnvironmentError(result.error));
   if (environment.VERCEL_ENV === "production") {
     const productionIssues = [
-      !result.data.DATABASE_URL_DIRECT && "- DATABASE_URL_DIRECT: required for production migrations",
       result.data.SESSION_COOKIE_SECURE !== "true" && "- SESSION_COOKIE_SECURE: must be true in production",
       !result.data.NEXT_PUBLIC_APP_URL.startsWith("https://") && "- NEXT_PUBLIC_APP_URL: must use HTTPS in production",
     ].filter(Boolean);
@@ -76,7 +75,9 @@ export function getAuthEnvironment(environment: NodeJS.ProcessEnv = process.env)
   }).safeParse(environment);
   if (!result.success) throw new Error(formatEnvironmentError(result.error));
   const production = environment.VERCEL_ENV === "production" || environment.NODE_ENV === "production";
-  if (production && result.data.SESSION_COOKIE_SECURE !== "true") {
+  const localPreview = environment.WORKATLAS_LOCAL_PREVIEW === "true"
+    && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(environment.NEXT_PUBLIC_APP_URL || "");
+  if (production && result.data.SESSION_COOKIE_SECURE !== "true" && !localPreview) {
     throw new Error("Invalid production environment configuration:\n- SESSION_COOKIE_SECURE: must be true in production");
   }
   return {

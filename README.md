@@ -93,6 +93,46 @@ Dashboard YAML selects a registered widget and safe display options. To add a ty
 
 ## Local development
 
+### Daily two-command workflow (Windows)
+
+Use these commands after changing the application:
+
+```powershell
+# 1. Build, validate, migrate the local database, and start the local production server
+.\local-preview.cmd
+
+# 2. Validate, commit everything, apply forward-only Neon migrations, push, and wait for Vercel
+.\release-production.cmd -Message "feat: describe the change" -Yes
+```
+
+Open `http://localhost:3000` after the first command. Press Ctrl+C when manual local testing is finished. The script starts Docker PostgreSQL, installs dependencies only when `package-lock.json` changes, applies local migrations, validates configuration, runs type checking, linting and tests, builds the application, verifies its assets, and starts that production build. It uses a localhost-only preview flag so authentication works over local HTTP; this exception cannot enable insecure cookies for a public URL.
+
+The release command stops immediately if checks fail, the current branch is not `main`, GitHub contains commits that are missing locally, a secret-like file is staged, or a Neon credential is detected in staged content. It commits all source and forward-only migration files locally, applies those committed migrations through Neon's direct connection, pushes `main`, waits for the matching release fingerprint at `/api/version`, and finally checks `/api/health`. If migration fails, nothing is pushed or deployed. Vercel's existing GitHub integration performs the deployment.
+
+`-Yes` makes the release fully unattended. Omit it if you prefer a final `RELEASE` confirmation before Neon or GitHub is changed. You can safely exercise the checks without migrating, committing, pushing, or deploying:
+
+```powershell
+.\local-preview.cmd -ChecksOnly
+.\release-production.cmd -DryRun
+```
+
+The equivalent npm aliases are `npm.cmd run local:preview` and `npm.cmd run release:production -- ...`. The top-level `.cmd` launchers are recommended on Windows because they also work when `npm` is not on the current PowerShell PATH.
+
+### One-time setup for the release command
+
+Create the private production release file once:
+
+```powershell
+Copy-Item .env.release.example .env.release.local
+notepad .env.release.local
+```
+
+Put the Neon **direct** connection string in `DATABASE_URL_DIRECT` (its hostname must not contain `-pooler`) and keep `NEXT_PUBLIC_APP_URL=https://workatlas-kappa.vercel.app`. The private file is ignored by Git, is not automatically loaded by Next.js, and must never be committed or shared. It is loaded explicitly only for migrations and deployment verification; the seven runtime variables remain in Vercel.
+
+The local `.env`, Docker Desktop, Git authentication, and the Vercel GitHub import are also one-time prerequisites. If they are already working, no additional setup is needed.
+
+### Manual commands
+
 ```text
 Copy-Item .env.example .env
 docker compose up -d db
@@ -127,9 +167,31 @@ Migration `0002_mute_hedge_knight.sql` adds `tasks.position`, backfills determin
 npm run db:migrate
 ```
 
-Production migrations use `DATABASE_URL_DIRECT`; runtime queries use the pooled `DATABASE_URL`. Never use `db:push` against production or run migrations during Vercel builds. Back up production data before applying migrations.
+Production migrations use `DATABASE_URL_DIRECT`; runtime queries use the pooled `DATABASE_URL`. Never use `db:push` against production or run migrations during Vercel builds. Create and verify a PostgreSQL backup before any risky migration or backfill.
 
 Migration `0004_mature_redwing.sql` adds `users.email_verified_at`, email-verification tokens, password-reset tokens, and atomic PostgreSQL rate-limit counters.
+
+## Persistent production data and migration safety
+
+Neon PostgreSQL is the persistent source of truth. Deployments replace application code only; they do not recreate, truncate, reset or seed production tables. Users, sessions, projects, tasks, Kanban positions, comments and relationships remain in Neon across Vercel deployments.
+
+Every schema change must be generated as reviewed SQL with `npm run db:generate`, committed under `drizzle/`, and applied with `npm run db:migrate`. The migration runner and `npm run db:migrations:verify` reject destructive SQL such as `DROP`, `TRUNCATE`, live-data `DELETE`/seed statements, renames and destructive type conversions. `db:push` is intentionally not provided.
+
+Safe additive migrations run through the release workflow. Risky changes require an expand/migrate/contract design and a verified backup first:
+
+```powershell
+.\backup-production.cmd
+```
+
+The command runs PostgreSQL `pg_dump` in Docker, creates a compressed custom-format dump and SHA-256 manifest under ignored `backups/`, and never writes credentials into Git. Copy the result to separate encrypted storage. Automated release remains blocked for destructive SQL; review and execute any contract step manually only after old application code no longer depends on it. Recovery and `pg_restore` instructions are in `DEPLOYMENT_VERCEL_NEON.md`.
+
+Migration `0005_aromatic_peter_parker.sql` adds only the data-transfer audit table and empty tag arrays to existing projects/tasks; it does not replace or rewrite live rows.
+
+## Personal export and import
+
+Authenticated users can open **Dashboard → Export / import**. JSON version 1.0 is canonical; YAML and Excel use the same internal Zod schema. Exports contain only the signed-in user's projects, tasks, authored comments, project-task relationships, IDs, descriptions, dates, statuses, priorities, positions, tags and timestamps. Password hashes, sessions, tokens, permissions, API keys, rate limits and security records are never selected or serialized.
+
+Imports enforce 5 MB, 1,000-project, 10,000-task and 20,000-comment limits. Files are parsed and strictly validated before the preview appears. The user then chooses **create new**, **skip existing**, or **update matching IDs**. Every owner/author ID is supplied server-side from the authenticated session, and the complete hierarchy plus success audit entry is written in one PostgreSQL transaction. Any write failure rolls back the entire import. Failed attempts are also audit logged without retaining file contents.
 
 ## Account security and email
 
@@ -157,6 +219,8 @@ Rate-limit identifiers such as email addresses and IP addresses are HMAC-hashed 
 ## Health monitoring
 
 `GET /api/health` performs a lightweight database query and returns only connection state. Configure UptimeRobot or an equivalent HTTPS monitor to request `https://your-domain.example/api/health` every five minutes and alert on a non-200 response.
+
+`GET /api/version` returns the non-secret release fingerprint written by the production release script. The script uses this endpoint to distinguish the new Vercel deployment from the previously cached deployment.
 
 ## Custom domain readiness
 
