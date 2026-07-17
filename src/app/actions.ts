@@ -1,14 +1,14 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { projects, tasks } from "@/db/schema";
+import { projects } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { mutationRepository } from "@/lib/drizzle-mutation-repository";
 import type { MutationActionState } from "@/lib/action-state";
 import {
+  createOwnedTask,
   deleteOwnedProject,
   deleteOwnedTask,
   persistOwnedKanbanOrder,
@@ -17,6 +17,7 @@ import {
   MutationError,
 } from "@/lib/mutation-service";
 import { entityIdSchema, kanbanOrderSchema, projectInputSchema, taskInputSchema } from "@/lib/mutation-schemas";
+import { enforceRateLimit, RateLimitError, rateLimitPolicies } from "@/lib/rate-limit";
 
 function stringValue(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -51,7 +52,7 @@ function validationMessage(error: z.ZodError) {
 }
 
 function errorState(error: unknown): MutationActionState {
-  if (error instanceof MutationError || error instanceof z.ZodError) {
+  if (error instanceof MutationError || error instanceof RateLimitError || error instanceof z.ZodError) {
     return { status: "error", message: error.message };
   }
   console.error("Server mutation failed", error);
@@ -89,16 +90,24 @@ export async function createIdea(formData: FormData) {
 }
 
 export async function createTask(formData: FormData) {
-  const user = await requireUser();
-  const parsed = taskInputSchema.safeParse(taskValues(formData));
-  if (!parsed.success) throw new Error(validationMessage(parsed.error));
-  const ownedProject = await mutationRepository.findOwnedProject(user.id, parsed.data.projectId);
-  if (!ownedProject) throw new Error("Project was not found or you do not have permission to change it.");
-  const position = await mutationRepository.nextTaskPosition(user.id, parsed.data.status);
-  await db.insert(tasks).values({ ownerId: user.id, ...parsed.data, position });
-  await db.update(projects).set({ updatedAt: new Date() })
-    .where(and(eq(projects.id, parsed.data.projectId), eq(projects.ownerId, user.id)));
-  revalidateTaskViews(parsed.data.projectId);
+  const result = await createTaskAction({ status: "idle", message: "" }, formData);
+  if (result.status === "error") throw new Error(result.message);
+}
+
+export async function createTaskAction(
+  _previousState: MutationActionState,
+  formData: FormData,
+): Promise<MutationActionState> {
+  try {
+    const user = await requireUser();
+    const parsed = taskInputSchema.safeParse(taskValues(formData));
+    if (!parsed.success) return { status: "error", message: validationMessage(parsed.error) };
+    await createOwnedTask(mutationRepository, user.id, parsed.data);
+    revalidateTaskViews(parsed.data.projectId);
+    return { status: "success", message: "Task created successfully." };
+  } catch (error) {
+    return errorState(error);
+  }
 }
 
 export async function updateProjectAction(
@@ -124,6 +133,7 @@ export async function deleteProjectAction(
 ): Promise<MutationActionState> {
   try {
     const user = await requireUser();
+    await enforceRateLimit("delete-project", user.id, rateLimitPolicies.destructiveMutation);
     const projectId = entityIdSchema.parse(stringValue(formData, "projectId"));
     const { taskCount } = await deleteOwnedProject(mutationRepository, user.id, projectId);
     revalidateProjectViews();
@@ -164,6 +174,7 @@ export async function deleteTaskAction(
 ): Promise<MutationActionState> {
   try {
     const user = await requireUser();
+    await enforceRateLimit("delete-task", user.id, rateLimitPolicies.destructiveMutation);
     const taskId = entityIdSchema.parse(stringValue(formData, "taskId"));
     await deleteOwnedTask(mutationRepository, user.id, taskId);
     revalidateTaskViews(stringValue(formData, "projectId") || undefined);

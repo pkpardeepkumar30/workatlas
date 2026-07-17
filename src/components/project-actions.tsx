@@ -3,6 +3,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { deleteProjectAction, updateProjectAction } from "@/app/actions";
 import { MutationDialog } from "@/components/mutation-dialog";
+import { PrioritySelect } from "@/components/priority";
 import { inputClass } from "@/components/ui";
 
 export type EditableProject = {
@@ -31,7 +32,7 @@ export function EditProjectDialog({ project }: { project: EditableProject }) {
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">Title<input autoFocus name="title" required minLength={2} defaultValue={project.title} className={`${inputClass} mt-1.5`} /></label>
         <label className="text-sm font-medium text-slate-700">Area<input name="area" required defaultValue={project.area} className={`${inputClass} mt-1.5`} /></label>
         <label className="text-sm font-medium text-slate-700">Status<select name="status" defaultValue={project.status} className={`${inputClass} mt-1.5`}><option value="idea">Idea</option><option value="planned">Planned</option><option value="active">Active</option><option value="waiting">Waiting</option><option value="completed">Completed</option><option value="archived">Archived</option></select></label>
-        <label className="text-sm font-medium text-slate-700">Priority<select name="priority" defaultValue={project.priority} className={`${inputClass} mt-1.5`}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label>
+        <label className="text-sm font-medium text-slate-700">Priority<PrioritySelect name="priority" defaultValue={project.priority} className="mt-1.5" /></label>
         <label className="text-sm font-medium text-slate-700">Deadline<input name="targetDate" type="date" defaultValue={project.targetDate ?? ""} className={`${inputClass} mt-1.5`} /></label>
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">Description<textarea name="description" rows={4} defaultValue={project.description} className={`${inputClass} mt-1.5`} /></label>
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">Next action<input name="nextAction" defaultValue={project.nextAction} className={`${inputClass} mt-1.5`} /></label>
@@ -62,4 +63,3 @@ export function DeleteProjectDialog({ project, taskCount, redirectTo }: { projec
     </MutationDialog>
   );
 }
-

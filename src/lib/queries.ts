@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne, type SQL } from "drizzle-orm";
+import type { Priority } from "@/lib/priority-config";
 import { projects, tasks } from "@/db/schema";
 import { db } from "@/lib/db";
 
@@ -18,7 +19,9 @@ export function getIdeas(ownerId: string) {
     .orderBy(desc(projects.createdAt));
 }
 
-export function getTasks(ownerId: string) {
+export function getTasks(ownerId: string, filters: { priority?: Priority } = {}) {
+  const conditions: SQL[] = [eq(tasks.ownerId, ownerId)];
+  if (filters.priority) conditions.push(eq(tasks.priority, filters.priority));
   return db
     .select({
       id: tasks.id,
@@ -31,10 +34,11 @@ export function getTasks(ownerId: string) {
       projectTitle: projects.title,
       position: tasks.position,
       updatedAt: tasks.updatedAt,
+      createdAt: tasks.createdAt,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
-    .where(eq(tasks.ownerId, ownerId))
+    .where(and(...conditions))
     .orderBy(asc(tasks.dueDate), desc(tasks.updatedAt));
 }
 
@@ -75,10 +79,19 @@ export async function getProject(ownerId: string, projectId: string) {
   return result[0] ?? null;
 }
 
-export function getProjectTasks(ownerId: string, projectId: string) {
+export type ProjectTaskSort = "priority" | "due" | "status" | "created";
+
+export function getProjectTasks(ownerId: string, projectId: string, sort: ProjectTaskSort = "due") {
+  const order = sort === "priority"
+    ? [desc(tasks.priority), asc(tasks.dueDate)]
+    : sort === "status"
+      ? [asc(tasks.status), asc(tasks.position)]
+      : sort === "created"
+        ? [desc(tasks.createdAt)]
+        : [asc(tasks.dueDate), desc(tasks.updatedAt)];
   return db
     .select()
     .from(tasks)
     .where(and(eq(tasks.ownerId, ownerId), eq(tasks.projectId, projectId)))
-    .orderBy(asc(tasks.dueDate), desc(tasks.updatedAt));
+    .orderBy(...order);
 }

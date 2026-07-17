@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { priorities } from "@/lib/priority-config";
 
 export const projectStatuses = ["idea", "planned", "active", "waiting", "completed", "archived"] as const;
 export const taskStatuses = ["backlog", "todo", "in_progress", "blocked", "done"] as const;
-export const priorities = ["low", "medium", "high", "critical"] as const;
+export { priorities };
 
 const optionalDate = z.preprocess((value) => (value === "" || value === undefined ? null : value), z.string().date().nullable());
 

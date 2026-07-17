@@ -18,7 +18,7 @@ Restart the application and open **Dashboard → AI planner**.
 
 ## Security boundary
 
-The API key is used only by the server route. It is never included in browser JavaScript. The starter sends a concise portfolio summary and the user's planning request to the model.
+The API key is used only by the server route. It is never included in browser JavaScript. WorkAtlas sends a concise portfolio summary and the user's planning request to the model.
 
 The AI route is intentionally read-only. It can recommend actions, but it cannot execute SQL, modify projects or run shell commands. Add explicit, narrowly scoped server tools later if you want reviewed write operations.
 

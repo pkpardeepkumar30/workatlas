@@ -25,7 +25,9 @@ import { GripVertical } from "lucide-react";
 import { useMemo, useState } from "react";
 import { persistKanbanAction } from "@/app/actions";
 import { DeleteTaskDialog, EditTaskDialog, type EditableTask, type ProjectOption } from "@/components/task-actions";
-import { Badge, Card, CardContent } from "@/components/ui";
+import { Card, CardContent } from "@/components/ui";
+import { PriorityBadge } from "@/components/priority";
+import { priorityConfig } from "@/lib/priority-config";
 import { taskStatuses } from "@/lib/mutation-schemas";
 import { cn, statusLabel } from "@/lib/utils";
 
@@ -44,7 +46,7 @@ function SortableTaskCard({ task, projects, disabled }: { task: KanbanTask; proj
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, disabled });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
-      <Card className={cn("touch-manipulation", isDragging && "opacity-40")}>
+      <Card className={cn("touch-manipulation border-l-4", priorityConfig[task.priority].indicatorClass, isDragging && "opacity-40 ring-2 ring-indigo-500 ring-offset-2")}>
         <CardContent className="p-4">
         <div className="flex items-start gap-2">
           <button
@@ -60,7 +62,7 @@ function SortableTaskCard({ task, projects, disabled }: { task: KanbanTask; proj
           <div className="min-w-0 flex-1">
             <p className="font-medium">{task.title}</p>
             <p className="mt-1 truncate text-xs text-slate-500">{task.projectTitle}</p>
-            <div className="mt-3"><Badge>{statusLabel(task.priority)}</Badge></div>
+            <div className="mt-3"><PriorityBadge priority={task.priority} /></div>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-start justify-end gap-2 border-t border-slate-100 pt-3">
@@ -185,7 +187,7 @@ export function KanbanBoard({ initialTasks, projects }: { initialTasks: KanbanTa
           ))}
         </div>
         <DragOverlay>
-          {activeTask && <Card className="w-64 rotate-2 shadow-xl"><CardContent className="p-4"><p className="font-medium">{activeTask.title}</p><p className="mt-1 text-xs text-slate-500">{activeTask.projectTitle}</p></CardContent></Card>}
+          {activeTask && <Card className={cn("w-64 rotate-2 border-l-4 shadow-xl ring-2 ring-indigo-500", priorityConfig[activeTask.priority].indicatorClass)}><CardContent className="p-4"><p className="font-medium">{activeTask.title}</p><p className="mt-1 text-xs text-slate-500">{activeTask.projectTitle}</p><div className="mt-3"><PriorityBadge priority={activeTask.priority} /></div></CardContent></Card>}
         </DragOverlay>
       </DndContext>
     </div>

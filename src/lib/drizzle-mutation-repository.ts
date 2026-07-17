@@ -36,6 +36,17 @@ export const mutationRepository: MutationRepository = {
     return (result?.value ?? -1) + 1;
   },
 
+  async createTask(ownerId, input) {
+    return db.transaction(async (transaction) => {
+      const [result] = await transaction.select({ value: max(tasks.position) }).from(tasks)
+        .where(and(eq(tasks.ownerId, ownerId), eq(tasks.status, input.status)));
+      const [task] = await transaction.insert(tasks).values({ ownerId, ...input, position: (result?.value ?? -1) + 1 }).returning({ id: tasks.id });
+      await transaction.update(projects).set({ updatedAt: new Date() })
+        .where(and(eq(projects.id, input.projectId), eq(projects.ownerId, ownerId)));
+      return task;
+    });
+  },
+
   async updateProject(ownerId, projectId, input: ProjectInput) {
     const result = await db.update(projects).set({ ...input, updatedAt: new Date() })
       .where(and(eq(projects.id, projectId), eq(projects.ownerId, ownerId)));

@@ -1,12 +1,12 @@
 route: /
 title: WorkAtlas
-description: A self-hosted project and idea management starter.
+description: A project and knowledge workspace for research, software, publications, experiments, and long-term ideas.
 published: true
 sections:
   - type: hero
-    eyebrow: Self-hosted and Markdown friendly
+    eyebrow: Project and knowledge workspace
     title: Turn scattered ideas into a controlled portfolio of work.
-    description: A modern starter for researchers, engineers and independent builders who need ideas, projects, tasks and public documentation in one maintainable system.
+    description: WorkAtlas helps researchers, engineers, and independent builders manage ideas, projects, tasks, and public documentation in one maintainable workspace.
     layout: split
     callout:
       title: Weekly focus
@@ -41,3 +41,16 @@ sections:
         icon: shieldCheck
   - type: markdown
     source: home.md
+  - type: showcase
+    id: product-tour
+    source: showcase.md
+    items:
+      - title: Portfolio dashboard
+        image: /showcase/dashboard.svg
+        alt: WorkAtlas dashboard with project and task summaries using demonstration data
+      - title: Project workspace
+        image: /showcase/project.svg
+        alt: WorkAtlas project page with task counts, priorities, and due dates using demonstration data
+      - title: Kanban planning
+        image: /showcase/kanban.svg
+        alt: WorkAtlas Kanban board with demonstration tasks arranged by status

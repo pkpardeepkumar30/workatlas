@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createOwnedTask,
   deleteOwnedProject,
   deleteOwnedTask,
   persistOwnedKanbanOrder,
@@ -41,6 +42,7 @@ function repository(overrides: Partial<MutationRepository> = {}): MutationReposi
     findOwnedTaskIds: vi.fn(async (_ownerId, ids) => ids),
     countProjectTasks: vi.fn(async () => 2),
     nextTaskPosition: vi.fn(async () => 4),
+    createTask: vi.fn(async () => ({ id: taskId })),
     updateProject: vi.fn(async () => true),
     updateTask: vi.fn(async () => true),
     deleteProject: vi.fn(async () => true),
@@ -73,6 +75,18 @@ describe("project mutations", () => {
 });
 
 describe("task mutations", () => {
+  it("creates a task with the selected owned project association", async () => {
+    const repo = repository();
+    await expect(createOwnedTask(repo, ownerId, taskInput)).resolves.toEqual({ id: taskId });
+    expect(repo.findOwnedProject).toHaveBeenCalledWith(ownerId, projectId);
+    expect(repo.createTask).toHaveBeenCalledWith(ownerId, taskInput);
+  });
+
+  it("rejects project-level task creation when the project is not owned", async () => {
+    const repo = repository({ findOwnedProject: vi.fn(async () => null) });
+    await expect(createOwnedTask(repo, ownerId, taskInput)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(repo.createTask).not.toHaveBeenCalled();
+  });
   it("updates all editable fields and assigns the end position after a status change", async () => {
     const repo = repository();
     await updateOwnedTask(repo, ownerId, taskId, taskInput);

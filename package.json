@@ -55,7 +55,7 @@
     "typescript": "^5",
     "vitest": "^4.1.10"
   },
-  "description": "A Markdown-friendly, self-hosted project and idea management starter.",
+  "description": "WorkAtlas is a project and knowledge workspace for research, software, publications, experiments, and long-term ideas.",
   "engines": {
     "node": ">=22.0.0"
   }

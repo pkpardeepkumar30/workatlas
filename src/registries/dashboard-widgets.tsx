@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DeleteTaskDialog, EditTaskDialog } from "@/components/task-actions";
 import { Badge, Card, CardContent, CardHeader } from "@/components/ui";
+import { PriorityBadge } from "@/components/priority";
 import type { DashboardWidget } from "@/config/schemas";
 import type { getProjects, getTasks } from "@/lib/queries";
 import { cn, formatDate, statusLabel } from "@/lib/utils";
@@ -70,6 +71,7 @@ function TaskList(widget: DashboardWidget, data: DashboardData) {
               <div><p className="font-medium">{task.title}</p><p className="mt-1 text-xs text-slate-500">{task.projectTitle}</p></div>
               <span className="text-xs text-slate-500">{task.dueDate ? formatDate(task.dueDate) : "Unscheduled"}</span>
             </div>
+            <div className="mt-2"><PriorityBadge priority={task.priority} /></div>
             <div className="mt-2 flex flex-wrap items-start justify-end gap-2">
               <EditTaskDialog task={task} projects={projectOptions} />
               <DeleteTaskDialog task={task} />

@@ -1,19 +1,19 @@
 ---
 title: WorkAtlas
-description: A self-hosted project and idea management starter.
+description: A project and knowledge workspace for focused, long-running work.
 order: 1
 published: true
 ---
 
-## Content that does not require a developer
+## Keep complex work visible and actionable
 
-This section comes directly from `content/pages/home.md`. Change this text, save the file, and reload the website. The public marketing pages and documentation remain independent from transactional application data.
+WorkAtlas is a project and knowledge workspace for managing research, software development, publications, experiments, and long-term ideas.
 
-### Design principle
+Bring project context, concrete tasks, priority, deadlines, Kanban planning, and review prompts into one private workspace. Public pages and documentation remain configuration-driven, while live account and project data stays in PostgreSQL behind authenticated server operations.
 
-- Markdown is used for public copy, documentation, guides and reusable project templates.
-- PostgreSQL is used for accounts, projects, tasks, status changes and future collaboration data.
-- Server-side permission checks isolate every user's records.
-- The codebase remains a modular monolith that can run on one desktop or move to a VPS.
+### Built around durable boundaries
 
-> Do not use Markdown files as a concurrent multi-user database. They are excellent for curated content, but not for live task state.
+- Use the dashboard to understand active commitments and overdue work.
+- Move tasks through a keyboard-, mouse-, and touch-friendly Kanban board.
+- Keep public product copy and documentation in reviewed Markdown.
+- Extend approved page sections and actions without allowing executable YAML.

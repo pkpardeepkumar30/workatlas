@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getProjects } from "@/lib/queries";
 import { getOpenAIEnvironment } from "@/lib/env";
+import { enforceRateLimit, RateLimitError, rateLimitPolicies } from "@/lib/rate-limit";
 
 const requestSchema = z.object({
   request: z.string().trim().min(10).max(3000),
@@ -12,6 +13,12 @@ const requestSchema = z.object({
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  try {
+    await enforceRateLimit("ai-plan", user.id, rateLimitPolicies.ai);
+  } catch (error) {
+    if (error instanceof RateLimitError) return NextResponse.json({ error: error.message }, { status: 429 });
+    return NextResponse.json({ error: "The request could not be checked safely." }, { status: 503 });
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = requestSchema.safeParse(body);

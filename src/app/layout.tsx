@@ -11,6 +11,12 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: environment.appName,
     title: { default: site.name, template: `%s | ${site.name}` },
     description: site.description,
+    openGraph: {
+      type: "website",
+      title: site.name,
+      description: site.description,
+      siteName: site.name,
+    },
   };
 }
 

@@ -1,12 +1,12 @@
 route: /about
-title: About this starter
-description: How configuration, content, application code, and live data stay separate.
+title: About WorkAtlas
+description: How WorkAtlas keeps configuration, content, application code, and live data separate.
 published: true
 sections:
   - type: hero
     eyebrow: Configuration-driven by design
-    title: Change presentation without weakening application boundaries.
-    description: YAML selects approved layouts and actions, Markdown holds editorial content, and PostgreSQL remains the source of truth for collaborative data.
+    title: Flexible presentation with controlled application boundaries.
+    description: YAML selects approved layouts and actions, Markdown holds editorial content, and PostgreSQL remains the source of truth for private workspace data.
     layout: centered
   - type: markdown
     source: about.md
@@ -19,4 +19,3 @@ sections:
       - label: Back home
         action: goHome
         variant: secondary
-

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
 import { isRegistrationEnabled } from "@/lib/auth";
+import { getPublicEnvironment } from "@/lib/public-env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,5 +16,6 @@ export default function SignUpPage() {
       </>
     );
   }
-  return <><h1 className="text-2xl font-bold">Create an account</h1><p className="mt-2 mb-6 text-sm text-slate-500">Each account sees only its own projects and tasks.</p><AuthForm mode="sign-up" /></>;
+  const environment = getPublicEnvironment();
+  return <><h1 className="text-2xl font-bold">Create your WorkAtlas account</h1><p className="mt-2 mb-6 text-sm text-slate-500">Organise projects, tasks, research, and long-term ideas in a private workspace.</p><AuthForm mode="sign-up" turnstileEnabled={environment.turnstileEnabled} turnstileSiteKey={environment.turnstileSiteKey} /></>;
 }

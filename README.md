@@ -1,6 +1,6 @@
 # WorkAtlas
 
-A configuration-driven, self-hosted Next.js project-management starter. Authentication and live project data remain server-side, while curated pages can be extended without turning configuration into executable code.
+WorkAtlas is a configuration-driven project and knowledge workspace for managing research, software development, publications, experiments, and long-term ideas. Authentication and live project data remain server-side, while curated pages can be extended without turning configuration into executable code.
 
 ## Architecture boundaries
 
@@ -20,7 +20,7 @@ YAML is parsed as data with `yaml` and validated by strict Zod schemas in `src/c
 - `site-config/features.yml` — public and dashboard feature visibility.
 - `site-config/dashboard.yml` — dashboard heading and registered widgets. Widgets only receive already owner-scoped query results.
 - `site-config/pages/*.yml` — route metadata and ordered registered sections.
-- `content/pages/*.md` — public long-form copy referenced by `markdown` sections.
+- `content/pages/*.md` — public long-form copy referenced by `markdown` and `showcase` sections.
 - `content/docs/*.md` — documentation and its validated front matter.
 
 ## Add a public page
@@ -79,7 +79,7 @@ Optional `visibility` values are `all`, `guest`, and `authenticated`. Dashboard 
 3. Add the renderer under the same key in `sectionRegistry`.
 4. Add an example to a page YAML file and run the checks.
 
-The registry is exhaustive at compile time, so adding a schema type without a renderer causes a TypeScript error. Current types are `hero`, `markdown`, `featureGrid`, and `buttonGroup`.
+The registry is exhaustive at compile time, so adding a schema type without a renderer causes a TypeScript error. Current types are `hero`, `markdown`, `featureGrid`, `buttonGroup`, and `showcase`.
 
 ## Add a registered action
 
@@ -101,13 +101,17 @@ npm run db:migrate
 npm run dev
 ```
 
-The schema includes users, revocable sessions, projects, tasks, comments, and per-project membership permissions. Docker creates PostgreSQL; committed Drizzle migrations create and upgrade its schema.
+The schema includes users, revocable sessions, projects, tasks, comments, per-project membership permissions, single-use account-security tokens, and persistent rate limits. Docker creates PostgreSQL; committed Drizzle migrations create and upgrade its schema.
+
+Public registration remains available when `REGISTRATION_ENABLED=true`. Email verification and Turnstile are separate opt-in controls and default to `false`.
 
 ## Project and task management
 
 Projects can be edited or deleted from the portfolio and project detail views. Project edits cover title, description, area, status, priority, deadline, and next action. The delete confirmation names the project and warns that PostgreSQL cascade rules also remove its tasks and comments.
 
-Tasks can be edited or deleted anywhere they are managed, including the dashboard, task list, project detail, and Kanban board. The responsive editor is a bottom drawer on small screens and a centered dialog on larger screens. Task reassignment succeeds only when the destination project belongs to the authenticated owner.
+Tasks can be created globally or directly from a project. A project-scoped form displays and locks the current project, while global creation retains the project selector. Tasks can be edited or deleted anywhere they are managed, including the dashboard, task list, project detail, and Kanban board. The responsive editor is a bottom drawer on small screens and a centered dialog on larger screens. Task reassignment succeeds only when the destination project belongs to the authenticated owner.
+
+Project pages show total, open, and completed task counts and support sorting by priority, due date, status, or creation date. The shared priority registry maps stored `critical` values to the visible label **Urgent** and supplies the same text-and-colour treatment to lists, forms, dashboard widgets, reviews, and Kanban cards.
 
 All mutations flow through authenticated server actions and the owner-scoped mutation service. Client code receives no generic database endpoint or arbitrary query capability.
 
@@ -124,6 +128,47 @@ npm run db:migrate
 ```
 
 Production migrations use `DATABASE_URL_DIRECT`; runtime queries use the pooled `DATABASE_URL`. Never use `db:push` against production or run migrations during Vercel builds. Back up production data before applying migrations.
+
+Migration `0004_mature_redwing.sql` adds `users.email_verified_at`, email-verification tokens, password-reset tokens, and atomic PostgreSQL rate-limit counters.
+
+## Account security and email
+
+New security features use these environment variables:
+
+```text
+RESEND_API_KEY=
+EMAIL_FROM=
+EMAIL_VERIFICATION_REQUIRED=false
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+TURNSTILE_ENABLED=false
+```
+
+Verification and reset tokens come from cryptographically secure random bytes; only HMAC hashes are stored. Tokens are single-use and expire, and a successful password reset deletes every session belonging to that user. Forgot-password and resend-verification responses do not disclose whether an arbitrary address exists.
+
+Account email addresses are currently immutable: there is no client or server endpoint that can change an authenticated user's email. A future email-change workflow must require current-account proof and verification of the replacement address before committing the change.
+
+To enable email verification, add and verify a sending domain in Resend, create an API key, set `EMAIL_FROM` to an address on the verified domain, and then set `EMAIL_VERIFICATION_REQUIRED=true`. Keep it `false` until registration, verification, resend, and password reset emails work end to end.
+
+Turnstile is optional and every token is validated server-side. For local testing only, Cloudflare provides the always-pass site key `1x00000000000000000000AA` and secret key `1x0000000000000000000000000000000AA`. Never use test keys in production. Registration and forgot-password require Turnstile whenever it is enabled; sign-in requires it after repeated failures.
+
+Rate-limit identifiers such as email addresses and IP addresses are HMAC-hashed before storage. Fixed-window counters use atomic PostgreSQL upserts, making them suitable for Vercel's ephemeral serverless functions.
+
+## Health monitoring
+
+`GET /api/health` performs a lightweight database query and returns only connection state. Configure UptimeRobot or an equivalent HTTPS monitor to request `https://your-domain.example/api/health` every five minutes and alert on a non-200 response.
+
+## Custom domain readiness
+
+No production URL is hard-coded. `NEXT_PUBLIC_APP_URL` supplies metadata and all email links. To add a domain later:
+
+1. In Vercel, open **Project → Settings → Domains**, add the domain, and follow Vercel's DNS instructions.
+2. Change `NEXT_PUBLIC_APP_URL` to the final `https://` URL in Production.
+3. Redeploy so metadata and future email links use the new origin.
+4. Update Turnstile hostname restrictions if Turnstile is enabled.
+5. Verify the email-sending domain separately in Resend; a Vercel domain assignment does not verify email delivery.
+
+Recommended Vercel project description: “WorkAtlas is a project and knowledge workspace for research, software, publications, experiments, and long-term ideas.”
 
 ## Deployment
 

@@ -38,11 +38,68 @@ export const users = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     role: userRole("role").notNull().default("member"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("users_email_unique").on(table.email)],
+);
+
+export const emailVerificationTokens = pgTable(
+  "email_verification_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("email_verification_tokens_hash_unique").on(table.tokenHash),
+    index("email_verification_tokens_user_idx").on(table.userId),
+    index("email_verification_tokens_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("password_reset_tokens_hash_unique").on(table.tokenHash),
+    index("password_reset_tokens_user_idx").on(table.userId),
+    index("password_reset_tokens_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+export const authRateLimits = pgTable(
+  "auth_rate_limits",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    action: text("action").notNull(),
+    identifierHash: text("identifier_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(1),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("auth_rate_limits_lookup_unique").on(table.action, table.identifierHash, table.windowStart),
+    index("auth_rate_limits_expires_at_idx").on(table.expiresAt),
+  ],
 );
 
 export const sessions = pgTable(
@@ -157,6 +214,9 @@ export const comments = pgTable(
 );
 
 export type User = typeof users.$inferSelect;
+export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type AuthRateLimit = typeof authRateLimits.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;

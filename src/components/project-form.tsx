@@ -1,5 +1,6 @@
 import { createProject } from "@/app/actions";
 import { Button, inputClass } from "@/components/ui";
+import { PrioritySelect } from "@/components/priority";
 
 export function ProjectForm({ compact = false }: { compact?: boolean }) {
   return (
@@ -16,9 +17,7 @@ export function ProjectForm({ compact = false }: { compact?: boolean }) {
         </select>
       </label>
       <label className="text-sm font-medium text-slate-700">Priority
-        <select name="priority" defaultValue="medium" className={`${inputClass} mt-1.5`}>
-          <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
-        </select>
+        <PrioritySelect name="priority" defaultValue="medium" className="mt-1.5" />
       </label>
       <label className="text-sm font-medium text-slate-700">Target date
         <input name="targetDate" type="date" className={`${inputClass} mt-1.5`} />

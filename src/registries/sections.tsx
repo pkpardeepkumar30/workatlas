@@ -1,5 +1,6 @@
 import { ActionControl } from "@/components/action-control";
 import { Markdown } from "@/components/markdown";
+import { ShowcaseGallery } from "@/components/showcase-gallery";
 import type { PageSection } from "@/config/schemas";
 import { getContentDocument } from "@/lib/content";
 import { cn } from "@/lib/utils";
@@ -111,10 +112,16 @@ function ButtonGroupSection(section: PageSection) {
   );
 }
 
+async function ShowcaseSection(section: PageSection) {
+  if (section.type !== "showcase") return null;
+  const document = await getContentDocument("pages", section.source.replace(/\.md$/, ""));
+  return <section id={section.id} className="mx-auto max-w-7xl px-5 py-14 lg:px-8"><div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 sm:p-10"><Markdown>{document.body}</Markdown><ShowcaseGallery items={section.items} /></div></section>;
+}
+
 export const sectionRegistry = {
   hero: HeroSection,
   markdown: MarkdownSection,
   featureGrid: FeatureGridSection,
   buttonGroup: ButtonGroupSection,
+  showcase: ShowcaseSection,
 } satisfies Record<PageSection["type"], SectionRenderer>;
-

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DeleteProjectDialog, EditProjectDialog } from "@/components/project-actions";
 import { ProjectForm } from "@/components/project-form";
+import { PriorityBadge } from "@/components/priority";
 import { Badge, Card, CardContent, CardHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { getProjects } from "@/lib/queries";
@@ -25,7 +26,7 @@ export default async function ProjectsPage() {
                     <Link href={`/dashboard/projects/${project.id}`} className="font-semibold hover:text-indigo-600">{project.title}</Link>
                     <p className="mt-1 text-sm text-slate-500">{project.area} · {project.nextAction || "Missing next action"}</p>
                   </div>
-                  <div className="flex gap-2"><Badge>{statusLabel(project.status)}</Badge><Badge>{statusLabel(project.priority)}</Badge></div>
+                  <div className="flex gap-2"><Badge>{statusLabel(project.status)}</Badge><PriorityBadge priority={project.priority} /></div>
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <p className="text-xs text-slate-400">Target: {formatDate(project.targetDate)}</p>
@@ -47,4 +48,3 @@ export default async function ProjectsPage() {
     </div>
   );
 }
-

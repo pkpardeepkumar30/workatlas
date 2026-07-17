@@ -3,6 +3,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { deleteTaskAction, updateTaskAction } from "@/app/actions";
 import { MutationDialog } from "@/components/mutation-dialog";
+import { PrioritySelect } from "@/components/priority";
 import { inputClass } from "@/components/ui";
 
 export type EditableTask = {
@@ -32,7 +33,7 @@ export function EditTaskDialog({ task, projects }: { task: EditableTask; project
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">Title<input autoFocus name="title" required minLength={2} defaultValue={task.title} className={`${inputClass} mt-1.5`} /></label>
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">Project<select name="projectId" required defaultValue={task.projectId} className={`${inputClass} mt-1.5`}>{projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
         <label className="text-sm font-medium text-slate-700">Status<select name="status" defaultValue={task.status} className={`${inputClass} mt-1.5`}><option value="backlog">Backlog</option><option value="todo">To do</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="done">Done</option></select></label>
-        <label className="text-sm font-medium text-slate-700">Priority<select name="priority" defaultValue={task.priority} className={`${inputClass} mt-1.5`}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label>
+        <label className="text-sm font-medium text-slate-700">Priority<PrioritySelect name="priority" defaultValue={task.priority} className="mt-1.5" /></label>
         <label className="text-sm font-medium text-slate-700">Due date<input name="dueDate" type="date" defaultValue={task.dueDate ?? ""} className={`${inputClass} mt-1.5`} /></label>
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">Description<textarea name="description" rows={4} defaultValue={task.description} className={`${inputClass} mt-1.5`} /></label>
       </div>

@@ -23,6 +23,12 @@ This guide keeps WorkAtlas as one Next.js modular monolith. Vercel runs the appl
 | `REGISTRATION_ENABLED` | No | Server only | `true` for open registration; `false` for invite-only mode |
 | `OPENAI_API_KEY` | No | Server only | Enables the AI planner |
 | `OPENAI_MODEL` | No | Server only | Optional model override |
+| `RESEND_API_KEY` | No | Server only | Resend credential for verification and password-reset delivery |
+| `EMAIL_FROM` | No | Server only | Sender address on a verified email domain |
+| `EMAIL_VERIFICATION_REQUIRED` | Yes | Server only | Keep `false` until email delivery is verified |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | No | Public | Cloudflare Turnstile widget key |
+| `TURNSTILE_SECRET_KEY` | No | Server only | Cloudflare Siteverify secret |
+| `TURNSTILE_ENABLED` | Yes | Server only | Optional abuse protection; defaults to `false` |
 
 Generate a production session secret without committing it:
 
@@ -111,12 +117,18 @@ Never force-push deployment preparation over an existing remote.
    REGISTRATION_ENABLED=true
    OPENAI_API_KEY=<optional>
    OPENAI_MODEL=<optional>
+   RESEND_API_KEY=<optional until email is configured>
+   EMAIL_FROM=<optional until email is configured>
+   EMAIL_VERIFICATION_REQUIRED=false
+   NEXT_PUBLIC_TURNSTILE_SITE_KEY=<optional>
+   TURNSTILE_SECRET_KEY=<optional>
+   TURNSTILE_ENABLED=false
    ```
 
 5. Scope variables separately for Production, Preview, and Development. Use a separate Neon branch for Preview, or do not provide write-capable production credentials there.
 6. Deploy. If the final production hostname differs from the initial hostname, update `NEXT_PUBLIC_APP_URL` and redeploy.
 7. Environment changes do not alter an existing deployment; redeploy after every relevant change.
-8. Verify `GET https://<domain>/api/health` returns `200` with `{"status":"ok","database":"connected"}`.
+8. Verify `GET https://<domain>/api/health` returns `200` with `{"status":"ok","database":"connected"}`. Add this URL to UptimeRobot or another HTTPS uptime monitor.
 9. Test registration/login/logout and an owner-scoped project/task workflow. With `REGISTRATION_ENABLED=false`, `/sign-up` must show the invite-only message and the API must return `403`.
 
 Pushes to non-production branches create Vercel preview deployments. A push or merge to `main` creates the production deployment when the Vercel Git integration uses its default production-branch setting. GitHub CI and Vercel builds are separate checks; neither mutates the schema.
@@ -166,9 +178,13 @@ docker compose up --build web
 
 For a VPS, keep PostgreSQL private, terminate HTTPS at a trusted proxy, set `SESSION_COOKIE_SECURE=true`, provide all required environment variables, and run migrations as a deliberate operator step before starting the new application image.
 
+### Custom domain later
+
+In Vercel, open **Project Settings → Domains**, add the chosen domain, and apply the displayed DNS records. When HTTPS is ready, change `NEXT_PUBLIC_APP_URL`, update Turnstile hostname restrictions, and redeploy. Resend sending-domain DNS verification is a separate process and is still required before changing `EMAIL_FROM`.
+
 ## Operational limitations
 
-- Rate limiting, email verification, password reset, audit logging, and automated session cleanup are not yet implemented. Keep registration disabled or limit the initial deployment to trusted users until these are added.
+- Audit logging and automated session cleanup are not yet implemented. Expired rate-limit records are opportunistically cleaned during normal traffic; a scheduled cleanup job may be appropriate at larger scale.
 - Uploads are not implemented. Vercel's filesystem is ephemeral; future uploads must use object storage through a dedicated abstraction.
 - YAML and Markdown changes require a Git commit and redeployment; they are intentionally read-only at runtime.
 - Run one migration operator at a time. Do not point simultaneous preview deployments at production migration credentials.

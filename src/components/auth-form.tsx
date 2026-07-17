@@ -4,12 +4,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, inputClass } from "@/components/ui";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
-export function AuthForm({ mode, registrationEnabled = true }: { mode: "sign-in" | "sign-up"; registrationEnabled?: boolean }) {
+export function AuthForm({
+  mode,
+  registrationEnabled = true,
+  turnstileEnabled = false,
+  turnstileSiteKey,
+}: {
+  mode: "sign-in" | "sign-up";
+  registrationEnabled?: boolean;
+  turnstileEnabled?: boolean;
+  turnstileSiteKey?: string;
+}) {
   const router = useRouter();
+  const isSignUp = mode === "sign-up";
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
-  const isSignUp = mode === "sign-up";
+  const [turnstileRequired, setTurnstileRequired] = useState(isSignUp && turnstileEnabled);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,9 +37,10 @@ export function AuthForm({ mode, registrationEnabled = true }: { mode: "sign-in"
     setPending(false);
     if (!response.ok) {
       setError(payload.error ?? "Authentication failed");
+      if (payload.turnstileRequired) setTurnstileRequired(true);
       return;
     }
-    router.push("/dashboard");
+    router.push(payload.redirectTo ?? "/dashboard");
     router.refresh();
   }
 
@@ -42,8 +55,10 @@ export function AuthForm({ mode, registrationEnabled = true }: { mode: "sign-in"
         <input name="email" type="email" required className={`${inputClass} mt-1.5`} autoComplete="email" />
       </label>
       <label className="block text-sm font-medium text-slate-700">Password
-        <input name="password" type="password" required minLength={8} className={`${inputClass} mt-1.5`} autoComplete={isSignUp ? "new-password" : "current-password"} />
+        <input name="password" type="password" required minLength={isSignUp ? 12 : 1} className={`${inputClass} mt-1.5`} autoComplete={isSignUp ? "new-password" : "current-password"} />
       </label>
+      {!isSignUp && <div className="text-right"><Link href="/forgot-password" className="text-sm font-semibold text-indigo-600">Forgot password?</Link></div>}
+      {turnstileRequired && turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} />}
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <Button disabled={pending} className="w-full">{pending ? "Working…" : isSignUp ? "Create account" : "Sign in"}</Button>
       {(isSignUp || registrationEnabled) ? (

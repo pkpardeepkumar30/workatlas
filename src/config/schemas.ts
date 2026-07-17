@@ -91,11 +91,26 @@ const buttonGroupSectionSchema = z
   })
   .strict();
 
+const showcaseSectionSchema = z
+  .object({
+    type: z.literal("showcase"),
+    id: z.string().min(1).optional(),
+    source: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/, "must be a .md filename in content/pages"),
+    items: z.array(z.object({
+      title: z.string().min(1),
+      image: z.string().regex(/^\/showcase\/[a-z0-9-]+\.(?:png|jpe?g|webp|svg)$/, "must be a local /showcase image"),
+      alt: z.string().min(1),
+    }).strict()).min(1).max(6),
+    feature: featureIdSchema.optional(),
+  })
+  .strict();
+
 export const pageSectionSchema = z.discriminatedUnion("type", [
   heroSectionSchema,
   markdownSectionSchema,
   featureGridSectionSchema,
   buttonGroupSectionSchema,
+  showcaseSectionSchema,
 ]);
 
 export const pageConfigSchema = z
@@ -246,4 +261,3 @@ export type PageSection = z.infer<typeof pageSectionSchema>;
 export type ButtonConfig = z.infer<typeof buttonSchema>;
 export type DashboardConfig = z.infer<typeof dashboardConfigSchema>;
 export type DashboardWidget = z.infer<typeof dashboardWidgetSchema>;
-

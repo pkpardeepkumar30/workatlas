@@ -8,6 +8,7 @@ export interface MutationRepository {
   findOwnedTaskIds(ownerId: string, taskIds: string[]): Promise<string[]>;
   countProjectTasks(ownerId: string, projectId: string): Promise<number>;
   nextTaskPosition(ownerId: string, status: TaskInput["status"]): Promise<number>;
+  createTask(ownerId: string, input: TaskInput): Promise<{ id: string }>;
   updateProject(ownerId: string, projectId: string, input: ProjectInput): Promise<boolean>;
   updateTask(ownerId: string, taskId: string, input: TaskInput & { position?: number }): Promise<boolean>;
   deleteProject(ownerId: string, projectId: string): Promise<boolean>;
@@ -27,6 +28,11 @@ export class MutationError extends Error {
 
 function inaccessible(entity: "Project" | "Task") {
   return new MutationError(`${entity} was not found or you do not have permission to change it.`, "FORBIDDEN");
+}
+
+export async function createOwnedTask(repository: MutationRepository, ownerId: string, input: TaskInput) {
+  if (!(await repository.findOwnedProject(ownerId, input.projectId))) throw inaccessible("Project");
+  return repository.createTask(ownerId, input);
 }
 
 export async function updateOwnedProject(
@@ -77,4 +83,3 @@ export async function persistOwnedKanbanOrder(
   }
   await repository.persistTaskOrder(ownerId, items);
 }
-

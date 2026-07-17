@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deploymentEnvSchema } from "@/lib/env";
+import { deploymentEnvSchema, getAuthEnvironment } from "@/lib/env";
 
 const validEnvironment = {
   DATABASE_URL: "postgresql://user:password@example.test/workatlas",
@@ -24,5 +24,24 @@ describe("deployment environment", () => {
   it("rejects a short session secret", () => {
     const result = deploymentEnvSchema.safeParse({ ...validEnvironment, SESSION_SECRET: "too-short" });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects insecure cookies in production", () => {
+    expect(() => getAuthEnvironment({
+      SESSION_SECRET: validEnvironment.SESSION_SECRET,
+      SESSION_COOKIE_SECURE: "false",
+      REGISTRATION_ENABLED: "true",
+      VERCEL_ENV: "production",
+      NODE_ENV: "production",
+    })).toThrow(/SESSION_COOKIE_SECURE/);
+  });
+
+  it("keeps public registration enabled when configured", () => {
+    expect(getAuthEnvironment({
+      SESSION_SECRET: validEnvironment.SESSION_SECRET,
+      SESSION_COOKIE_SECURE: "true",
+      REGISTRATION_ENABLED: "true",
+      NODE_ENV: "test",
+    }).registrationEnabled).toBe(true);
   });
 });
