@@ -127,7 +127,7 @@ Copy-Item .env.release.example .env.release.local
 notepad .env.release.local
 ```
 
-Put the Neon **direct** connection string in `DATABASE_URL_DIRECT` (its hostname must not contain `-pooler`) and keep `NEXT_PUBLIC_APP_URL=https://workatlas-kappa.vercel.app`. The private file is ignored by Git, is not automatically loaded by Next.js, and must never be committed or shared. It is loaded explicitly only for migrations and deployment verification; the seven runtime variables remain in Vercel.
+Put the Neon **direct** connection string in `DATABASE_URL_DIRECT` (its hostname must not contain `-pooler`), change its query parameter to `sslmode=verify-full`, and keep `NEXT_PUBLIC_APP_URL=https://workatlas-kappa.vercel.app`. The private file is ignored by Git, is not automatically loaded by Next.js, and must never be committed or shared. It is loaded explicitly only for migrations and deployment verification; the runtime variables remain in Vercel.
 
 The local `.env`, Docker Desktop, Git authentication, and the Vercel GitHub import are also one-time prerequisites. If they are already working, no additional setup is needed.
 

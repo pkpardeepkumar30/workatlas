@@ -97,13 +97,18 @@ if (-not (& git config user.name) -or -not (& git config user.email)) {
 if (-not (Test-Path ".env.release.local")) {
   throw "Missing .env.release.local. Run 'Copy-Item .env.release.example .env.release.local', add the Neon direct URL, and retry."
 }
-if (-not (& git status --porcelain)) {
-  Write-Host "There are no local changes to release." -ForegroundColor Yellow
-  return
-}
-
 Write-Host "Checking GitHub for newer commits..." -ForegroundColor Cyan
 Assert-NotBehindOrigin
+$hasWorkingChanges = [bool](& git status --porcelain)
+$ahead = [int]((& git rev-list --count origin/main..HEAD).Trim())
+if (-not $hasWorkingChanges -and $ahead -eq 0) {
+  Write-Host "There are no local changes or unpushed commits to release." -ForegroundColor Yellow
+  return
+}
+$resumingCommittedRelease = -not $hasWorkingChanges -and $ahead -gt 0
+if ($resumingCommittedRelease) {
+  Write-Host "Resuming $ahead committed release commit(s) that have not yet been pushed." -ForegroundColor Yellow
+}
 
 $savedEnvironment = Clear-ProductionOverrides
 try {
@@ -125,7 +130,11 @@ if ($DryRun) {
 
 if (-not $Yes) {
   Write-Host ""
-  Write-Host "Next, this script will commit ALL local changes, apply forward-only Neon migrations, and push main to GitHub." -ForegroundColor Yellow
+  if ($resumingCommittedRelease) {
+    Write-Host "Next, this script will apply forward-only Neon migrations and push the existing local release commit(s)." -ForegroundColor Yellow
+  } else {
+    Write-Host "Next, this script will commit ALL local changes, apply forward-only Neon migrations, and push main to GitHub." -ForegroundColor Yellow
+  }
   $confirmation = Read-Host "Type RELEASE to continue"
   if ($confirmation -ne "RELEASE") {
     Write-Host "Release cancelled. No production changes were made." -ForegroundColor Yellow
@@ -133,27 +142,37 @@ if (-not $Yes) {
   }
 }
 
-# Detect environment files or copied database credentials before touching Neon.
-Write-Host "Preflight safety-checking all release files..." -ForegroundColor Cyan
-Invoke-Native "git" @("add", "--all")
-Assert-StagedFilesAreSafe
+if ($hasWorkingChanges) {
+  # Detect environment files or copied database credentials before touching Neon.
+  Write-Host "Preflight safety-checking all release files..." -ForegroundColor Cyan
+  Invoke-Native "git" @("add", "--all")
+  Assert-StagedFilesAreSafe
+}
 
 # Check once more because the validation/build phase can take several minutes.
 Assert-NotBehindOrigin
 
-$releaseId = "release-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))-$([Guid]::NewGuid().ToString('N').Substring(0, 8))"
 $releaseFile = Join-Path $repoRoot "src\generated\release.ts"
-$releaseSource = "// Updated automatically by scripts/release-production.ps1.`nexport const RELEASE_ID = `"$releaseId`" as const;`n"
-[IO.File]::WriteAllText($releaseFile, $releaseSource, (New-Object Text.UTF8Encoding($false)))
+if ($resumingCommittedRelease) {
+  $releaseSource = Get-Content $releaseFile -Raw
+  if ($releaseSource -notmatch 'RELEASE_ID\s*=\s*"([^"]+)"') {
+    throw "The unpushed commit does not contain a valid release fingerprint. Add a source change and run the release again."
+  }
+  $releaseId = $Matches[1]
+} else {
+  $releaseId = "release-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))-$([Guid]::NewGuid().ToString('N').Substring(0, 8))"
+  $releaseSource = "// Updated automatically by scripts/release-production.ps1.`nexport const RELEASE_ID = `"$releaseId`" as const;`n"
+  [IO.File]::WriteAllText($releaseFile, $releaseSource, (New-Object Text.UTF8Encoding($false)))
 
-Write-Host "Staging and safety-checking all changes..." -ForegroundColor Cyan
-Invoke-Native "git" @("add", "--all")
-Assert-StagedFilesAreSafe
+  Write-Host "Staging and safety-checking all changes..." -ForegroundColor Cyan
+  Invoke-Native "git" @("add", "--all")
+  Assert-StagedFilesAreSafe
 
-if (-not $Message.Trim()) {
-  $Message = "release: WorkAtlas $([DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm')) UTC"
+  if (-not $Message.Trim()) {
+    $Message = "release: WorkAtlas $([DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm')) UTC"
+  }
+  Invoke-Native "git" @("commit", "-m", $Message)
 }
-Invoke-Native "git" @("commit", "-m", $Message)
 
 Write-Host "Applying committed forward-only migrations to Neon..." -ForegroundColor Cyan
 $savedEnvironment = Clear-ProductionOverrides

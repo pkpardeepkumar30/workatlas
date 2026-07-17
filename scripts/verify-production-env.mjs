@@ -1,3 +1,7 @@
+import pg from "pg";
+
+const { Pool } = pg;
+
 function fail(message) {
   console.error(`Production release configuration error: ${message}`);
   process.exit(1);
@@ -34,6 +38,9 @@ if (database.hostname.includes("-pooler")) {
 if (!database.hostname.endsWith(".neon.tech")) {
   fail("DATABASE_URL_DIRECT must point to a Neon .neon.tech hostname.");
 }
+if (database.searchParams.get("sslmode") !== "verify-full") {
+  fail("DATABASE_URL_DIRECT must use sslmode=verify-full so server certificates remain fully verified.");
+}
 if (application.protocol !== "https:") {
   fail("NEXT_PUBLIC_APP_URL must use HTTPS.");
 }
@@ -41,4 +48,18 @@ if (application.username || application.password || application.search || applic
   fail("NEXT_PUBLIC_APP_URL must be a plain public application URL.");
 }
 
-console.log(`Production release configuration is valid for ${application.origin}.`);
+const pool = new Pool({ connectionString: directUrl, max: 1, connectionTimeoutMillis: 15_000, allowExitOnIdle: true });
+let databaseFailure;
+try {
+  const result = await pool.query("select has_database_privilege(current_user, current_database(), 'CREATE') as can_create");
+  if (!result.rows[0]?.can_create) databaseFailure = "the configured role cannot create the Drizzle migration schema";
+} catch (error) {
+  const code = error && typeof error === "object" && "code" in error ? ` (${error.code})` : "";
+  const message = error instanceof Error ? error.message : "connection failed";
+  databaseFailure = `${message}${code}`;
+} finally {
+  await pool.end();
+}
+if (databaseFailure) fail(`Neon connection check failed: ${databaseFailure}. Copy a current direct connection string from Neon.`);
+
+console.log(`Production release configuration and Neon migration access are valid for ${application.origin}.`);

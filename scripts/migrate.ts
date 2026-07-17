@@ -30,6 +30,13 @@ async function main() {
 
 main().catch((error) => {
   console.error("Database migration failed.");
-  if (error instanceof Error) console.error(error.message);
+  if (error instanceof Error) {
+    console.error(error.message);
+    const cause = error.cause;
+    if (cause instanceof Error) {
+      const code = "code" in cause && typeof cause.code === "string" ? ` (${cause.code})` : "";
+      console.error(`Database error${code}: ${cause.message}`);
+    }
+  }
   process.exitCode = 1;
 });
