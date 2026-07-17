@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://ci_user:ci_password@127.0.0.1:5432/workatlas_ci
+      DATABASE_URL_DIRECT: postgresql://ci_user:ci_password@127.0.0.1:5432/workatlas_ci
+      SESSION_SECRET: ci-only-session-secret-with-more-than-32-characters
+      SESSION_COOKIE_SECURE: "false"
+      NEXT_PUBLIC_APP_NAME: WorkAtlas CI
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      REGISTRATION_ENABLED: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev --include=optional
+
+      - name: Validate repository configuration
+        run: npm run config:validate
+
+      - name: Validate deployment environment model
+        run: npm run env:check
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Check Drizzle migration history
+        run: npm run db:check
+
+      - name: Build application
+        run: npm run build
+
+      - name: Verify YAML and Markdown build assets
+        run: npm run build:verify
