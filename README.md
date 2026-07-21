@@ -143,13 +143,15 @@ npm run dev
 
 The schema includes users, revocable sessions, projects, tasks, comments, per-project membership permissions, single-use account-security tokens, and persistent rate limits. Docker creates PostgreSQL; committed Drizzle migrations create and upgrade its schema.
 
-Public registration remains available when `REGISTRATION_ENABLED=true`. Email verification and Turnstile are separate opt-in controls and default to `false`.
+Public registration remains available when `REGISTRATION_ENABLED=true`. Every newly created account must verify its address before dashboard access; pre-existing accounts are deliberately grandfathered by the additive migration. Turnstile remains an optional abuse-control layer.
 
 ## Project and task management
 
 Projects can be edited or deleted from the portfolio and project detail views. Project edits cover title, description, area, status, priority, deadline, and next action. The delete confirmation names the project and warns that PostgreSQL cascade rules also remove its tasks and comments.
 
-Tasks can be created globally or directly from a project. A project-scoped form displays and locks the current project, while global creation retains the project selector. Tasks can be edited or deleted anywhere they are managed, including the dashboard, task list, project detail, and Kanban board. The responsive editor is a bottom drawer on small screens and a centered dialog on larger screens. Task reassignment succeeds only when the destination project belongs to the authenticated owner.
+Tasks can be created globally, directly from a project, or from any Kanban column. A column-scoped action preselects its status while retaining the project selector. Task creation and editing support a precise deadline plus one-time email reminders at 15 minutes, 1 hour, 1 day, 2 days, 1 week, or a custom time. The responsive editor is a bottom drawer on small screens and a centered dialog on larger screens. Task reassignment succeeds only when the destination project belongs to the authenticated owner.
+
+Project/task Add, Edit, and Delete operations appear inside compact three-line action menus. Destructive actions still open named confirmation dialogs. Successful mutations show only a small green check for about two seconds; errors remain visible until the user can act on them.
 
 Project pages show total, open, and completed task counts and support sorting by priority, due date, status, or creation date. The shared priority registry maps stored `critical` values to the visible label **Urgent** and supplies the same text-and-colour treatment to lists, forms, dashboard widgets, reviews, and Kanban cards.
 
@@ -187,6 +189,8 @@ The command runs PostgreSQL `pg_dump` in Docker, creates a compressed custom-for
 
 Migration `0005_aromatic_peter_parker.sql` adds only the data-transfer audit table and empty tag arrays to existing projects/tasks; it does not replace or rewrite live rows.
 
+Migration `0006_curved_namor.sql` adds nullable task deadline/reminder columns, a deduplication log, and an `email_verification_required` account flag defaulting to `false`. It contains no updates, deletes, resets, seeds, or table replacements, so existing accounts, projects, tasks, comments, sessions, and Kanban positions remain unchanged.
+
 ## Personal export and import
 
 Authenticated users can open **Dashboard → Export / import**. JSON version 1.0 is canonical; YAML and Excel use the same internal Zod schema. Exports contain only the signed-in user's projects, tasks, authored comments, project-task relationships, IDs, descriptions, dates, statuses, priorities, positions, tags and timestamps. Password hashes, sessions, tokens, permissions, API keys, rate limits and security records are never selected or serialized.
@@ -200,7 +204,7 @@ New security features use these environment variables:
 ```text
 RESEND_API_KEY=
 EMAIL_FROM=
-EMAIL_VERIFICATION_REQUIRED=false
+CRON_SECRET=
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 TURNSTILE_ENABLED=false
@@ -210,7 +214,26 @@ Verification and reset tokens come from cryptographically secure random bytes; o
 
 Account email addresses are currently immutable: there is no client or server endpoint that can change an authenticated user's email. A future email-change workflow must require current-account proof and verification of the replacement address before committing the change.
 
-To enable email verification, add and verify a sending domain in Resend, create an API key, set `EMAIL_FROM` to an address on the verified domain, and then set `EMAIL_VERIFICATION_REQUIRED=true`. Keep it `false` until registration, verification, resend, and password reset emails work end to end.
+Add and verify a sending domain in Resend, create an API key, and set `RESEND_API_KEY` plus `EMAIL_FROM` in Vercel Production before opening registration. New registration fails safely without creating an account if delivery is not configured. Existing users remain able to sign in. Verification is a per-account database policy and cannot be disabled for newly created accounts with a client request or YAML setting.
+
+### Deadline reminder scheduler
+
+The authenticated `GET /api/cron/reminders` worker processes at most 100 due reminders per call. It first inserts a unique `(task_id, reminder_at)` claim, then sends; simultaneous invocations therefore skip the same reminder. Completed tasks, elapsed deadlines, accounts still pending required verification, and other users' data are excluded. Existing grandfathered accounts remain eligible. Delivery logs contain only status and controlled failure codes.
+
+For the existing Vercel Hobby deployment, use a free HTTPS scheduler such as cron-job.org because Hobby cron cannot provide the frequency needed for a 15-minute reminder. Configure it once:
+
+1. Generate a secret with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`.
+2. Add that exact value to Vercel **Project Settings → Environment Variables** as `CRON_SECRET` for Production, then redeploy.
+3. In cron-job.org, create a `GET` job for `https://workatlas-kappa.vercel.app/api/cron/reminders`, scheduled every five minutes.
+4. Add the custom request header `Authorization: Bearer <the same CRON_SECRET>` and use its test-run control once. A successful run returns JSON counts without exposing addresses or database credentials.
+
+The scheduler has no database credentials and can call only the fixed authenticated endpoint. Rotate `CRON_SECRET` in Vercel and the scheduler if it is ever disclosed. If moving to a Vercel plan that supports frequent cron schedules, the same endpoint and bearer-secret contract can be used from `vercel.json` instead.
+
+### Privacy and encryption boundaries
+
+Production web traffic uses HTTPS, secure cookies, HSTS, clickjacking/content-sniffing protections, and restrictive referrer/permissions headers. Remote PostgreSQL URLs are normalized to `sslmode=verify-full`, verifying both the certificate authority and Neon hostname. Neon supplies managed AES-256 encryption at rest; WorkAtlas does not commit encryption keys or database credentials.
+
+Passwords use bcrypt with cost 12. Session, verification, reset, rate-limit, and scheduler secrets are stored as hashes or outside the repository as appropriate. Every project/task query and mutation takes the authenticated owner ID server-side; the client has no generic database endpoint. Do not print request bodies, email provider credentials, database URLs, session tokens, or raw delivery errors in logs.
 
 Turnstile is optional and every token is validated server-side. For local testing only, Cloudflare provides the always-pass site key `1x00000000000000000000AA` and secret key `1x0000000000000000000000000000000AA`. Never use test keys in production. Registration and forgot-password require Turnstile whenever it is enabled; sign-in requires it after repeated failures.
 
@@ -248,11 +271,12 @@ npm run typecheck
 npm run lint
 npm run test
 npm run db:check
+npm run db:migrations:verify
 npm run build
 npm run build:verify
 ```
 
-Or run the complete sequence with `npm run check`. Tests cover mutations, permissions, configuration, Markdown loading, environment validation, task reassignment, and Kanban persistence. Invalid YAML produces errors such as:
+Or run the complete sequence with `npm run check`. Tests cover mutations, permissions/data isolation, configuration, Markdown loading, environment validation, email verification policy, reminder validation/deduplication, task reassignment, Kanban creation/persistence, action menus, compact success feedback, export/import mapping, and migration preservation. Invalid YAML produces errors such as:
 
 ```text
 Invalid configuration in site-config/pages/home.yml:

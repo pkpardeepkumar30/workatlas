@@ -43,6 +43,13 @@
       "when": 1784323602352,
       "tag": "0005_aromatic_peter_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784563763168,
+      "tag": "0006_curved_namor",
+      "breakpoints": true
     }
   ]
 }

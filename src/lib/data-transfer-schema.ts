@@ -13,6 +13,7 @@ const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "must use YYYY-MM-DD"
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }, "must be a real calendar date").nullable();
 const timestampSchema = z.string().datetime({ offset: true });
+const optionalTimestampSchema = timestampSchema.nullable().optional().default(null);
 const tagsSchema = z.array(z.string().trim().min(1).max(80)).max(50).default([]);
 
 export const transferCommentSchema = z.object({
@@ -30,6 +31,9 @@ export const transferTaskSchema = z.object({
   status: z.enum(["backlog", "todo", "in_progress", "blocked", "done"]),
   priority: z.enum(["low", "medium", "high", "critical"]),
   dueDate: dateSchema,
+  deadlineAt: optionalTimestampSchema,
+  reminderMinutes: z.union([z.literal(15), z.literal(60), z.literal(1440), z.literal(2880), z.literal(10080)]).nullable().optional().default(null),
+  reminderAt: optionalTimestampSchema,
   position: z.number().int().min(0).max(1_000_000),
   tags: tagsSchema,
   createdAt: timestampSchema,

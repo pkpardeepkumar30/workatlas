@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, CardContent, CardHeader, inputClass } from "@/components/ui";
+import { SuccessCheck } from "@/components/success-check";
 
 type Preview = {
   format: "json" | "yaml" | "xlsx";
@@ -104,7 +105,7 @@ export function DataTransferManager() {
               {loading === "import" ? "Importing…" : "Import validated file"}
             </Button>
           </div>}
-          {message && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">{message}</p>}
+          <div className="mt-4"><SuccessCheck show={Boolean(message)} label={message || "Import completed"} onDismiss={() => setMessage("")} /></div>
         </CardContent>
       </Card>
     </div>

@@ -41,6 +41,11 @@ function integerValue(value: unknown, field: string) {
   return number;
 }
 
+function nullableIntegerValue(value: unknown, field: string) {
+  if (value === null || value === undefined || text(value, field).trim() === "") return null;
+  return integerValue(value, field);
+}
+
 function tagsValue(value: unknown, field: string) {
   const raw = text(value, field).trim();
   if (!raw) return [];
@@ -97,10 +102,10 @@ export async function documentToExcel(document: DataTransferDocument) {
   ]);
 
   const tasks = workbook.addWorksheet("Tasks");
-  tasks.addRow(["projectId", "id", "title", "description", "status", "priority", "dueDate", "position", "tags", "createdAt", "updatedAt"]);
+  tasks.addRow(["projectId", "id", "title", "description", "status", "priority", "dueDate", "deadlineAt", "reminderMinutes", "reminderAt", "position", "tags", "createdAt", "updatedAt"]);
   for (const project of document.projects) for (const task of project.tasks) tasks.addRow([
     project.id, task.id, task.title, task.description, task.status, task.priority, task.dueDate ?? "",
-    task.position, JSON.stringify(task.tags), task.createdAt, task.updatedAt,
+    task.deadlineAt ?? "", task.reminderMinutes ?? "", task.reminderAt ?? "", task.position, JSON.stringify(task.tags), task.createdAt, task.updatedAt,
   ]);
 
   const comments = workbook.addWorksheet("Comments");
@@ -142,6 +147,8 @@ export async function excelToDocument(buffer: Buffer): Promise<unknown> {
     project.tasks.push({
       id: text(row.id, "Tasks.id"), title: text(row.title, "Tasks.title"), description: text(row.description, "Tasks.description"),
       status: text(row.status, "Tasks.status"), priority: text(row.priority, "Tasks.priority"), dueDate: nullableText(row.dueDate, "Tasks.dueDate"),
+      deadlineAt: nullableText(row.deadlineAt, "Tasks.deadlineAt"), reminderMinutes: nullableIntegerValue(row.reminderMinutes, "Tasks.reminderMinutes"),
+      reminderAt: nullableText(row.reminderAt, "Tasks.reminderAt"),
       position: integerValue(row.position, "Tasks.position"), tags: tagsValue(row.tags, "Tasks.tags"),
       createdAt: text(row.createdAt, "Tasks.createdAt"), updatedAt: text(row.updatedAt, "Tasks.updatedAt"),
     });

@@ -34,7 +34,7 @@ describe.runIf(hasDatabase)("PostgreSQL data transfer integration", () => {
       { id: projectA, ownerId: ownerA, title: "Owner A project", description: "A", status: "active", priority: "high", tags: ["alpha"] },
       { id: projectB, ownerId: ownerB, title: "Owner B project", description: "B", status: "planned", priority: "low", tags: ["private-b"] },
     ]);
-    await database.insert(tables.tasks).values({ id: taskA, ownerId: ownerA, projectId: projectA, title: "Ordered task", status: "in_progress", priority: "critical", position: 7, tags: ["ordered"] });
+    await database.insert(tables.tasks).values({ id: taskA, ownerId: ownerA, projectId: projectA, title: "Ordered task", status: "in_progress", priority: "critical", deadlineAt: new Date("2026-08-01T12:00:00Z"), reminderMinutes: 60, reminderAt: new Date("2026-08-01T11:00:00Z"), position: 7, tags: ["ordered"] });
     await database.insert(tables.comments).values({ id: commentA, projectId: projectA, taskId: taskA, authorId: ownerA, body: "Owned comment" });
   });
 
@@ -46,7 +46,7 @@ describe.runIf(hasDatabase)("PostgreSQL data transfer integration", () => {
     const exported = await buildExportDocument({ id: ownerA, name: "Owner A", email: `${ownerA}@example.test` }, repository);
     expect(exported.projects).toHaveLength(1);
     expect(exported.projects[0].id).toBe(projectA);
-    expect(exported.projects[0].tasks[0]).toMatchObject({ id: taskA, position: 7, tags: ["ordered"] });
+    expect(exported.projects[0].tasks[0]).toMatchObject({ id: taskA, position: 7, reminderMinutes: 60, tags: ["ordered"] });
     expect(exported.projects[0].comments[0]).toMatchObject({ id: commentA, taskId: taskA });
     expect(JSON.stringify(exported)).not.toContain("Owner B project");
     expect(JSON.stringify(exported)).not.toContain("not-exported");
@@ -57,7 +57,7 @@ describe.runIf(hasDatabase)("PostgreSQL data transfer integration", () => {
     const copied = await database.select().from(tables.projects).where(and(eq(tables.projects.ownerId, ownerB), eq(tables.projects.title, "Owner A project")));
     expect(copied).toHaveLength(1);
     const copiedTasks = await database.select().from(tables.tasks).where(and(eq(tables.tasks.ownerId, ownerB), eq(tables.tasks.projectId, copied[0].id)));
-    expect(copiedTasks[0]).toMatchObject({ position: 7, tags: ["ordered"] });
+    expect(copiedTasks[0]).toMatchObject({ position: 7, reminderMinutes: 60, tags: ["ordered"] });
     const copiedComments = await database.select().from(tables.comments).where(and(eq(tables.comments.authorId, ownerB), eq(tables.comments.projectId, copied[0].id)));
     expect(copiedComments[0].taskId).toBe(copiedTasks[0].id);
   });

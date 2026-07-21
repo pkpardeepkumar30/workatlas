@@ -9,7 +9,8 @@ export type OwnedTransferRows = {
   }>;
   tasks: Array<{
     id: string; projectId: string; title: string; description: string; status: "backlog" | "todo" | "in_progress" | "blocked" | "done";
-    priority: "low" | "medium" | "high" | "critical"; dueDate: string | null; position: number; tags: string[]; createdAt: Date; updatedAt: Date;
+    priority: "low" | "medium" | "high" | "critical"; dueDate: string | null; deadlineAt: Date | null; reminderMinutes: number | null; reminderAt: Date | null;
+    position: number; tags: string[]; createdAt: Date; updatedAt: Date;
   }>;
   comments: Array<{ id: string; projectId: string; taskId: string | null; body: string; createdAt: Date; updatedAt: Date }>;
 };
@@ -66,7 +67,9 @@ export async function buildExportDocument(identity: ExportIdentity, repository: 
       updatedAt: project.updatedAt.toISOString(),
       tasks: (tasksByProject.get(project.id) ?? []).sort((a, b) => a.position - b.position || a.createdAt.getTime() - b.createdAt.getTime()).map((task) => ({
         id: task.id, title: task.title, description: task.description, status: task.status, priority: task.priority,
-        dueDate: task.dueDate, position: task.position, tags: task.tags, createdAt: task.createdAt.toISOString(), updatedAt: task.updatedAt.toISOString(),
+        dueDate: task.dueDate, deadlineAt: task.deadlineAt?.toISOString() ?? null,
+        reminderMinutes: task.reminderMinutes as 15 | 60 | 1440 | 2880 | 10080 | null,
+        reminderAt: task.reminderAt?.toISOString() ?? null, position: task.position, tags: task.tags, createdAt: task.createdAt.toISOString(), updatedAt: task.updatedAt.toISOString(),
       })),
       comments: (commentsByProject.get(project.id) ?? []).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((comment) => ({
         id: comment.id, taskId: comment.taskId, body: comment.body, createdAt: comment.createdAt.toISOString(), updatedAt: comment.updatedAt.toISOString(),

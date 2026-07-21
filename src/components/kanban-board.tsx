@@ -24,7 +24,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { useMemo, useState } from "react";
 import { persistKanbanAction } from "@/app/actions";
-import { DeleteTaskDialog, EditTaskDialog, type EditableTask, type ProjectOption } from "@/components/task-actions";
+import { ActionMenu } from "@/components/action-menu";
+import { SuccessCheck } from "@/components/success-check";
+import { TaskActionMenu, type EditableTask, type ProjectOption } from "@/components/task-actions";
+import { CreateTaskDialog } from "@/components/task-form";
 import { Card, CardContent } from "@/components/ui";
 import { PriorityBadge } from "@/components/priority";
 import { priorityConfig } from "@/lib/priority-config";
@@ -65,10 +68,7 @@ function SortableTaskCard({ task, projects, disabled }: { task: KanbanTask; proj
             <div className="mt-3"><PriorityBadge priority={task.priority} /></div>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-start justify-end gap-2 border-t border-slate-100 pt-3">
-          <EditTaskDialog task={task} projects={projects} />
-          <DeleteTaskDialog task={task} />
-        </div>
+        <div className="mt-3 flex justify-end border-t border-slate-100 pt-3"><TaskActionMenu task={task} projects={projects} /></div>
         </CardContent>
       </Card>
     </div>
@@ -89,9 +89,9 @@ function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: status, disabled });
   return (
     <section aria-labelledby={`column-${status}`}>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h2 id={`column-${status}`} className="text-sm font-bold">{statusLabel(status)}</h2>
-        <span className="text-xs text-slate-400">{tasks.length}</span>
+        <div className="flex items-center gap-2"><span className="text-xs text-slate-400">{tasks.length}</span>{projects.length > 0 && <ActionMenu label={`${statusLabel(status)} column actions`}><CreateTaskDialog projects={projects} defaultStatus={status} label={`Add to ${statusLabel(status)}`} triggerVariant="menu" /></ActionMenu>}</div>
       </div>
       <div
         ref={setNodeRef}
@@ -172,14 +172,11 @@ export function KanbanBoard({ initialTasks, projects }: { initialTasks: KanbanTa
     <div>
       <div className="mt-5 flex min-h-6 items-center justify-between gap-4">
         <p className="text-xs text-slate-500">Drag by the handle, or focus it and press Space to move with the keyboard.</p>
-        {saving && <p className="text-xs font-semibold text-indigo-600" role="status">Saving order…</p>}
+        <div className="flex items-center gap-3">{saving && <p className="text-xs font-semibold text-indigo-600" role="status">Saving order…</p>}{projects.length > 0 && <ActionMenu label="Kanban actions"><CreateTaskDialog projects={projects} label="Add task" triggerVariant="menu" /></ActionMenu>}</div>
       </div>
-      {feedback && (
-        <p className={cn("mt-3 rounded-xl px-4 py-3 text-sm", feedback.kind === "error" ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700")} role={feedback.kind === "error" ? "alert" : "status"}>
-          {feedback.message}
-        </p>
-      )}
-      {tasks.length === 0 && <p className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No tasks yet. Create a task to populate the board.</p>}
+      {feedback?.kind === "error" && <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{feedback.message}</p>}
+      <div className="mt-3"><SuccessCheck show={feedback?.kind === "success"} label="Board order saved" onDismiss={() => setFeedback(null)} /></div>
+      {tasks.length === 0 && <p className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No tasks yet. Use a column menu to add the first task.</p>}
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {taskStatuses.map((status) => (

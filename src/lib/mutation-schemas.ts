@@ -6,6 +6,14 @@ export const taskStatuses = ["backlog", "todo", "in_progress", "blocked", "done"
 export { priorities };
 
 const optionalDate = z.preprocess((value) => (value === "" || value === undefined ? null : value), z.string().date().nullable());
+const optionalTimestamp = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : value),
+  z.string().datetime({ offset: true }).nullable(),
+);
+const optionalReminderMinutes = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : Number(value)),
+  z.union([z.literal(15), z.literal(60), z.literal(1440), z.literal(2880), z.literal(10080)]).nullable(),
+);
 
 export const projectInputSchema = z.object({
   title: z.string().trim().min(2).max(120),
@@ -24,6 +32,27 @@ export const taskInputSchema = z.object({
   status: z.enum(taskStatuses),
   priority: z.enum(priorities),
   dueDate: optionalDate,
+  deadlineAt: optionalTimestamp,
+  reminderMinutes: optionalReminderMinutes,
+  reminderAt: optionalTimestamp,
+}).superRefine((task, context) => {
+  if (!task.deadlineAt && (task.reminderAt || task.reminderMinutes)) {
+    context.addIssue({ code: "custom", path: ["deadlineAt"], message: "a deadline is required before adding a reminder" });
+  }
+  if (!task.reminderAt && task.reminderMinutes) {
+    context.addIssue({ code: "custom", path: ["reminderAt"], message: "the reminder time is missing" });
+  }
+  if (task.reminderAt && !task.deadlineAt) return;
+  if (task.reminderAt && task.deadlineAt) {
+    const reminderTime = new Date(task.reminderAt).getTime();
+    const deadlineTime = new Date(task.deadlineAt).getTime();
+    if (reminderTime >= deadlineTime) {
+      context.addIssue({ code: "custom", path: ["reminderAt"], message: "must be before the deadline" });
+    }
+    if (task.reminderMinutes && deadlineTime - reminderTime !== task.reminderMinutes * 60_000) {
+      context.addIssue({ code: "custom", path: ["reminderAt"], message: "does not match the selected reminder preset" });
+    }
+  }
 });
 
 export const entityIdSchema = z.string().uuid();
@@ -57,4 +86,5 @@ export const kanbanOrderSchema = z
 
 export type ProjectInput = z.infer<typeof projectInputSchema>;
 export type TaskInput = z.infer<typeof taskInputSchema>;
+export type TaskStatus = typeof taskStatuses[number];
 export type KanbanOrderItem = z.infer<typeof kanbanOrderSchema>[number];

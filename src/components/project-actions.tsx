@@ -2,8 +2,10 @@
 
 import { Pencil, Trash2 } from "lucide-react";
 import { deleteProjectAction, updateProjectAction } from "@/app/actions";
+import { ActionMenu, menuItemClass } from "@/components/action-menu";
 import { MutationDialog } from "@/components/mutation-dialog";
 import { PrioritySelect } from "@/components/priority";
+import { CreateTaskDialog } from "@/components/task-form";
 import { inputClass } from "@/components/ui";
 
 export type EditableProject = {
@@ -19,10 +21,11 @@ export type EditableProject = {
 
 const triggerClass = "inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50";
 
-export function EditProjectDialog({ project }: { project: EditableProject }) {
+export function EditProjectDialog({ project, triggerVariant = "button" }: { project: EditableProject; triggerVariant?: "button" | "menu" }) {
+  const trigger = <button type="button" role={triggerVariant === "menu" ? "menuitem" : undefined} className={triggerVariant === "menu" ? menuItemClass : triggerClass}><Pencil size={15} /> Edit</button>;
   return (
     <MutationDialog
-      trigger={<button type="button" className={triggerClass}><Pencil size={15} /> Edit</button>}
+      trigger={trigger}
       title={`Edit ${project.title}`}
       description="Update the project details. Changes are validated and applied only to projects you own."
       action={updateProjectAction}
@@ -41,13 +44,13 @@ export function EditProjectDialog({ project }: { project: EditableProject }) {
   );
 }
 
-export function DeleteProjectDialog({ project, taskCount, redirectTo }: { project: Pick<EditableProject, "id" | "title">; taskCount?: number; redirectTo?: string }) {
+export function DeleteProjectDialog({ project, taskCount, redirectTo, triggerVariant = "button" }: { project: Pick<EditableProject, "id" | "title">; taskCount?: number; redirectTo?: string; triggerVariant?: "button" | "menu" }) {
   const taskWarning = taskCount === undefined
     ? "All tasks and comments associated with this project will also be permanently deleted."
     : `${taskCount} associated task${taskCount === 1 ? "" : "s"} and their comments will also be permanently deleted.`;
   return (
     <MutationDialog
-      trigger={<button type="button" className={`${triggerClass} text-red-700 hover:bg-red-50`}><Trash2 size={15} /> Delete</button>}
+      trigger={<button type="button" role={triggerVariant === "menu" ? "menuitem" : undefined} className={triggerVariant === "menu" ? `${menuItemClass} text-red-700 hover:bg-red-50` : `${triggerClass} text-red-700 hover:bg-red-50`}><Trash2 size={15} /> Delete</button>}
       title={`Delete ${project.title}?`}
       description="This action cannot be undone."
       action={deleteProjectAction}
@@ -62,4 +65,12 @@ export function DeleteProjectDialog({ project, taskCount, redirectTo }: { projec
       </div>
     </MutationDialog>
   );
+}
+
+export function ProjectActionMenu({ project, taskCount, redirectTo, includeAddTask = true }: { project: EditableProject; taskCount?: number; redirectTo?: string; includeAddTask?: boolean }) {
+  return <ActionMenu label={`${project.title} actions`}>
+    {includeAddTask && <CreateTaskDialog projectId={project.id} projectTitle={project.title} triggerVariant="menu" />}
+    <EditProjectDialog project={project} triggerVariant="menu" />
+    <DeleteProjectDialog project={project} taskCount={taskCount} redirectTo={redirectTo} triggerVariant="menu" />
+  </ActionMenu>;
 }

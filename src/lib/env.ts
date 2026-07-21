@@ -19,15 +19,11 @@ export const deploymentEnvSchema = z.object({
   REGISTRATION_ENABLED: z.enum(["true", "false"]).default("true"),
   RESEND_API_KEY: optionalString,
   EMAIL_FROM: optionalString,
-  EMAIL_VERIFICATION_REQUIRED: z.enum(["true", "false"]).default("false"),
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
   TURNSTILE_SECRET_KEY: optionalString,
   TURNSTILE_ENABLED: z.enum(["true", "false"]).default("false"),
+  CRON_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
 }).superRefine((environment, context) => {
-  if (environment.EMAIL_VERIFICATION_REQUIRED === "true") {
-    if (!environment.RESEND_API_KEY) context.addIssue({ code: "custom", path: ["RESEND_API_KEY"], message: "required when email verification is enabled" });
-    if (!environment.EMAIL_FROM) context.addIssue({ code: "custom", path: ["EMAIL_FROM"], message: "required when email verification is enabled" });
-  }
   if (environment.TURNSTILE_ENABLED === "true") {
     if (!environment.NEXT_PUBLIC_TURNSTILE_SITE_KEY) context.addIssue({ code: "custom", path: ["NEXT_PUBLIC_TURNSTILE_SITE_KEY"], message: "required when Turnstile is enabled" });
     if (!environment.TURNSTILE_SECRET_KEY) context.addIssue({ code: "custom", path: ["TURNSTILE_SECRET_KEY"], message: "required when Turnstile is enabled" });
@@ -58,13 +54,19 @@ export function validateDeploymentEnv(environment: NodeJS.ProcessEnv = process.e
 export function getDatabaseUrl() {
   const result = postgresUrl.safeParse(process.env.DATABASE_URL);
   if (!result.success) throw new Error("DATABASE_URL must be a valid PostgreSQL connection URL.");
-  return result.data;
+  return withVerifiedTls(result.data);
 }
 
 export function getMigrationDatabaseUrl() {
   const result = postgresUrl.safeParse(process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL);
   if (!result.success) throw new Error("DATABASE_URL_DIRECT or DATABASE_URL must be a valid PostgreSQL connection URL.");
-  return result.data;
+  return withVerifiedTls(result.data);
+}
+
+function withVerifiedTls(value: string) {
+  const url = new URL(value);
+  if (!["localhost", "127.0.0.1"].includes(url.hostname)) url.searchParams.set("sslmode", "verify-full");
+  return url.toString();
 }
 
 export function getAuthEnvironment(environment: NodeJS.ProcessEnv = process.env) {
@@ -91,15 +93,10 @@ export function getEmailEnvironment(environment: NodeJS.ProcessEnv = process.env
   const result = z.object({
     RESEND_API_KEY: optionalString,
     EMAIL_FROM: optionalString,
-    EMAIL_VERIFICATION_REQUIRED: z.enum(["true", "false"]).default("false"),
     NEXT_PUBLIC_APP_URL: z.string().url(),
   }).safeParse(environment);
   if (!result.success) throw new Error(formatEnvironmentError(result.error));
-  const enabled = result.data.EMAIL_VERIFICATION_REQUIRED === "true";
-  if (enabled && (!result.data.RESEND_API_KEY || !result.data.EMAIL_FROM)) {
-    throw new Error("Email verification requires RESEND_API_KEY and EMAIL_FROM.");
-  }
-  return { ...result.data, verificationRequired: enabled };
+  return result.data;
 }
 
 export function getTurnstileEnvironment(environment: NodeJS.ProcessEnv = process.env) {
@@ -121,4 +118,12 @@ export function getOpenAIEnvironment() {
     apiKey: process.env.OPENAI_API_KEY || undefined,
     model: process.env.OPENAI_MODEL || "gpt-5.6",
   };
+}
+
+export function getReminderEnvironment(environment: NodeJS.ProcessEnv = process.env) {
+  const result = z.object({ CRON_SECRET: z.string().min(32).optional() }).safeParse({
+    CRON_SECRET: environment.CRON_SECRET || undefined,
+  });
+  if (!result.success) throw new Error(formatEnvironmentError(result.error));
+  return { cronSecret: result.data.CRON_SECRET };
 }

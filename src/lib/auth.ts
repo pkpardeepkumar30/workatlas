@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { sessions, users } from "@/db/schema";
 import { db } from "@/lib/db";
-import { getAuthEnvironment, getEmailEnvironment } from "@/lib/env";
+import { getAuthEnvironment } from "@/lib/env";
+import { requiresEmailVerification } from "@/lib/verification-policy";
 
 export const SESSION_COOKIE = "workatlas_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
@@ -15,6 +16,7 @@ export type SessionUser = {
   email: string;
   role: "admin" | "member";
   emailVerifiedAt: Date | null;
+  emailVerificationRequired: boolean;
 };
 
 function hashSessionToken(token: string) {
@@ -58,7 +60,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   if (!token) return null;
 
   const [result] = await db
-    .select({ id: users.id, name: users.name, email: users.email, role: users.role, emailVerifiedAt: users.emailVerifiedAt })
+    .select({ id: users.id, name: users.name, email: users.email, role: users.role, emailVerifiedAt: users.emailVerifiedAt, emailVerificationRequired: users.emailVerificationRequired })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(and(eq(sessions.tokenHash, hashSessionToken(token)), gt(sessions.expiresAt, new Date())))
@@ -69,6 +71,6 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
-  if (getEmailEnvironment().verificationRequired && !user.emailVerifiedAt) redirect("/verify-email/pending");
+  if (requiresEmailVerification(user)) redirect("/verify-email/pending");
   return user;
 }

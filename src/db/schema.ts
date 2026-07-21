@@ -41,6 +41,7 @@ export const users = pgTable(
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    emailVerificationRequired: boolean("email_verification_required").notNull().default(false),
     role: userRole("role").notNull().default("member"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -163,6 +164,9 @@ export const tasks = pgTable(
     status: taskStatus("status").notNull().default("todo"),
     priority: priority("priority").notNull().default("medium"),
     dueDate: date("due_date"),
+    deadlineAt: timestamp("deadline_at", { withTimezone: true }),
+    reminderMinutes: integer("reminder_minutes"),
+    reminderAt: timestamp("reminder_at", { withTimezone: true }),
     position: integer("position").notNull().default(0),
     tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -173,6 +177,26 @@ export const tasks = pgTable(
     index("tasks_project_idx").on(table.projectId),
     index("tasks_owner_status_idx").on(table.ownerId, table.status),
     index("tasks_owner_status_position_idx").on(table.ownerId, table.status, table.position),
+    index("tasks_reminder_due_idx").on(table.reminderAt, table.status),
+  ],
+);
+
+export const taskReminderNotifications = pgTable(
+  "task_reminder_notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    reminderAt: timestamp("reminder_at", { withTimezone: true }).notNull(),
+    status: text("status").notNull().default("claimed"),
+    failureCode: text("failure_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("task_reminder_notifications_task_time_unique").on(table.taskId, table.reminderAt),
+    index("task_reminder_notifications_user_idx").on(table.userId),
+    index("task_reminder_notifications_status_idx").on(table.status, table.createdAt),
   ],
 );
 
@@ -246,6 +270,7 @@ export type AuthRateLimit = typeof authRateLimits.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type TaskReminderNotification = typeof taskReminderNotifications.$inferSelect;
 export type ProjectMember = typeof projectMembers.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type DataTransferAuditLog = typeof dataTransferAuditLogs.$inferSelect;

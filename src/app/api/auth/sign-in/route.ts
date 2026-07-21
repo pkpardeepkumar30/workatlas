@@ -5,7 +5,7 @@ import { z } from "zod";
 import { users } from "@/db/schema";
 import { setSessionCookie } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getEmailEnvironment, getTurnstileEnvironment } from "@/lib/env";
+import { getTurnstileEnvironment } from "@/lib/env";
 import {
   clearRateLimit,
   consumeRateLimit,
@@ -16,6 +16,7 @@ import {
   rateLimitPolicies,
 } from "@/lib/rate-limit";
 import { verifyTurnstileResponse } from "@/lib/turnstile";
+import { requiresEmailVerification } from "@/lib/verification-policy";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     }
     await clearRateLimit("login-failure", loginIdentifier);
     await setSessionCookie(user);
-    const verificationRequired = getEmailEnvironment().verificationRequired && !user.emailVerifiedAt;
+    const verificationRequired = requiresEmailVerification(user);
     return NextResponse.json({ ok: true, redirectTo: verificationRequired ? "/verify-email/pending" : "/dashboard" });
   } catch (error) {
     if (error instanceof RateLimitError) {

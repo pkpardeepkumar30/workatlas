@@ -24,11 +24,20 @@ describe("production migration data preservation", () => {
   });
 
   it("adds portability storage without replacing existing live tables", () => {
-    const newest = migrationFiles.sort().at(-1)!;
-    const sql = fs.readFileSync(path.join(migrationDirectory, newest), "utf8");
+    const sql = migrationFiles.map((filename) => fs.readFileSync(path.join(migrationDirectory, filename), "utf8"))
+      .find((migration) => migration.includes('CREATE TABLE "data_transfer_audit_logs"'))!;
     expect(sql).toContain('CREATE TABLE "data_transfer_audit_logs"');
     expect(sql).toContain('ALTER TABLE "projects" ADD COLUMN "tags"');
     expect(sql).toContain('ALTER TABLE "tasks" ADD COLUMN "tags"');
     expect(sql).not.toMatch(/DROP|TRUNCATE|DELETE\s+FROM/i);
+  });
+
+  it("adds verification and reminders without modifying existing account, project, or task rows", () => {
+    const newest = migrationFiles.sort().at(-1)!;
+    const sql = fs.readFileSync(path.join(migrationDirectory, newest), "utf8");
+    expect(sql).toContain('CREATE TABLE "task_reminder_notifications"');
+    expect(sql).toContain('ALTER TABLE "tasks" ADD COLUMN "deadline_at"');
+    expect(sql).toContain('ALTER TABLE "users" ADD COLUMN "email_verification_required" boolean DEFAULT false NOT NULL');
+    expect(sql).not.toMatch(/UPDATE\s+"?(users|projects|tasks)"?|DROP|TRUNCATE|DELETE\s+FROM/i);
   });
 });

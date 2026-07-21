@@ -23,9 +23,9 @@ This guide keeps WorkAtlas as one Next.js modular monolith. Vercel runs the appl
 | `REGISTRATION_ENABLED` | No | Server only | `true` for open registration; `false` for invite-only mode |
 | `OPENAI_API_KEY` | No | Server only | Enables the AI planner |
 | `OPENAI_MODEL` | No | Server only | Optional model override |
-| `RESEND_API_KEY` | No | Server only | Resend credential for verification and password-reset delivery |
-| `EMAIL_FROM` | No | Server only | Sender address on a verified email domain |
-| `EMAIL_VERIFICATION_REQUIRED` | Yes | Server only | Keep `false` until email delivery is verified |
+| `RESEND_API_KEY` | Required for registration/reminders | Server only | Resend credential for verification, password-reset, and reminder delivery |
+| `EMAIL_FROM` | Required for registration/reminders | Server only | Sender address on a verified email domain |
+| `CRON_SECRET` | Required for reminders | Server only | At least 32 characters; authenticates only the controlled reminder worker |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | No | Public | Cloudflare Turnstile widget key |
 | `TURNSTILE_SECRET_KEY` | No | Server only | Cloudflare Siteverify secret |
 | `TURNSTILE_ENABLED` | Yes | Server only | Optional abuse protection; defaults to `false` |
@@ -59,8 +59,8 @@ Store the result directly in Vercel. Do not put it in Git, documentation, screen
    ORDER BY id;
    ```
 
-   A current deployment should list every committed migration through `0005_aromatic_peter_parker`.
-6. Verify that `users`, `sessions`, `projects`, `tasks`, `comments`, and `project_members` exist.
+   A current deployment should list every committed migration through `0006_curved_namor`.
+6. Verify that `users`, `sessions`, `projects`, `tasks`, `task_reminder_notifications`, `comments`, and `project_members` exist.
 
 Production uses committed SQL migrations. `db:push` is intentionally unavailable. Vercel builds and GitHub Actions never migrate, reset, truncate, recreate or seed the database. Neon remains persistent when Vercel replaces application code.
 
@@ -101,7 +101,7 @@ Do not give preview deployments an unrestricted production migration URL. Prefer
 1. Confirm `.env`, `.next`, `node_modules`, dumps, logs, `data`, and `uploads` are not tracked.
 2. Publish the private repository and push `main`.
 3. Open the Actions tab and confirm the `CI` workflow passes.
-4. Keep production credentials in Vercel/Neon, not GitHub Actions. CI uses non-routable placeholders and never connects to production.
+4. Keep database and session credentials in Vercel/Neon, not GitHub Actions. The reminder workflow receives only its narrow `CRON_SECRET` and public `APP_URL`; CI uses non-routable placeholders and never connects to production.
 
 For a repository that already has a GitHub remote:
 
@@ -131,9 +131,9 @@ Never force-push deployment preparation over an existing remote.
    REGISTRATION_ENABLED=true
    OPENAI_API_KEY=<optional>
    OPENAI_MODEL=<optional>
-   RESEND_API_KEY=<optional until email is configured>
-   EMAIL_FROM=<optional until email is configured>
-   EMAIL_VERIFICATION_REQUIRED=false
+   RESEND_API_KEY=<required before opening registration>
+   EMAIL_FROM=<sender on a verified Resend domain>
+   CRON_SECRET=<generated random value of at least 32 characters>
    NEXT_PUBLIC_TURNSTILE_SITE_KEY=<optional>
    TURNSTILE_SECRET_KEY=<optional>
    TURNSTILE_ENABLED=false
@@ -144,6 +144,12 @@ Never force-push deployment preparation over an existing remote.
 7. Environment changes do not alter an existing deployment; redeploy after every relevant change.
 8. Verify `GET https://<domain>/api/health` returns `200` with `{"status":"ok","database":"connected"}`. Add this URL to UptimeRobot or another HTTPS uptime monitor.
 9. Test registration/login/logout and an owner-scoped project/task workflow. With `REGISTRATION_ENABLED=false`, `/sign-up` must show the invite-only message and the API must return `403`.
+
+### Configure free five-minute reminders on Vercel Hobby
+
+Create a free cron-job.org `GET` job for `https://<production-domain>/api/cron/reminders` every five minutes and add `Authorization: Bearer <CRON_SECRET>` as a custom request header. Add the same secret as a Vercel Production variable, redeploy, and use the scheduler's test-run control once. The route returns `401` if the secret is missing or different. Never paste the secret into source, command output, an issue, or a log.
+
+Vercel invokes its own configured cron jobs only on Production deployments and sends `Authorization: Bearer $CRON_SECRET`. If the hosting plan later supports frequent cron schedules, replace the external schedule with an equivalent Vercel cron; do not run both unless duplicate-skip behavior is being deliberately tested.
 
 Pushes to non-production branches create Vercel preview deployments. A push or merge to `main` creates the production deployment when the Vercel Git integration uses its default production-branch setting. GitHub CI and Vercel builds are separate checks; neither mutates the schema.
 

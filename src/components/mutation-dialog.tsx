@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useId, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { initialMutationState, type MutationActionState } from "@/lib/action-state";
+import { SuccessCheck } from "@/components/success-check";
 import { cn } from "@/lib/utils";
 
 type MutationAction = (state: MutationActionState, formData: FormData) => Promise<MutationActionState>;
@@ -62,13 +63,14 @@ export function MutationDialog({
   return (
     <>
       <span onClick={() => { setFeedback(initialMutationState); setOpen(true); }}>{trigger}</span>
-      {feedback.message && (
-        <p className={cn("mt-2 text-xs", feedback.status === "error" ? "text-red-600" : "text-emerald-700")} role="status">
-          {feedback.message}
-        </p>
-      )}
+      {feedback.status === "error" && feedback.message && <p className="visible mt-2 text-xs text-red-600" role="alert">{feedback.message}</p>}
+      <SuccessCheck
+        show={feedback.status === "success"}
+        label={feedback.message || "Saved"}
+        onDismiss={() => setFeedback(initialMutationState)}
+      />
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={(event) => {
+        <div className="visible pointer-events-auto fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" onMouseDown={(event) => {
           if (event.currentTarget === event.target) setOpen(false);
         }}>
           <section

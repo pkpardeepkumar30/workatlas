@@ -16,7 +16,7 @@ function documentFixture(): DataTransferDocument {
       id: projectId, title: "Research", description: "Private notes", area: "Science", status: "active", priority: "high",
       nextAction: "Review", repositoryUrl: null, isPublic: false, targetDate: "2026-12-31", tags: ["important", "paper"],
       createdAt: fixedDate.toISOString(), updatedAt: fixedDate.toISOString(),
-      tasks: [{ id: taskId, title: "Read", description: "Chapter 1", status: "in_progress", priority: "critical", dueDate: "2026-08-01", position: 4, tags: ["reading"], createdAt: fixedDate.toISOString(), updatedAt: fixedDate.toISOString() }],
+      tasks: [{ id: taskId, title: "Read", description: "Chapter 1", status: "in_progress", priority: "critical", dueDate: "2026-08-01", deadlineAt: "2026-08-01T12:00:00.000Z", reminderMinutes: 60, reminderAt: "2026-08-01T11:00:00.000Z", position: 4, tags: ["reading"], createdAt: fixedDate.toISOString(), updatedAt: fixedDate.toISOString() }],
       comments: [{ id: commentId, taskId, body: "Keep this hierarchy", createdAt: fixedDate.toISOString(), updatedAt: fixedDate.toISOString() }],
     }],
   };
@@ -39,7 +39,7 @@ describe("user data export and import", () => {
       expect(ownerId).toBe("owner-a");
       return {
         projects: [{ id: projectId, title: "Research", description: "Notes", area: "Science", status: "active" as const, priority: "high" as const, nextAction: "Review", repositoryUrl: null, isPublic: false, targetDate: null, tags: [], createdAt: fixedDate, updatedAt: fixedDate }],
-        tasks: [{ id: taskId, projectId, title: "Read", description: "", status: "todo" as const, priority: "medium" as const, dueDate: null, position: 0, tags: [], createdAt: fixedDate, updatedAt: fixedDate }],
+        tasks: [{ id: taskId, projectId, title: "Read", description: "", status: "todo" as const, priority: "medium" as const, dueDate: null, deadlineAt: null, reminderMinutes: null, reminderAt: null, position: 0, tags: [], createdAt: fixedDate, updatedAt: fixedDate }],
         comments: [],
       };
     });

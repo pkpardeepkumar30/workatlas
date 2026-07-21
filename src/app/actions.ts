@@ -43,6 +43,9 @@ function taskValues(formData: FormData) {
     status: stringValue(formData, "status") || "todo",
     priority: stringValue(formData, "priority") || "medium",
     dueDate: stringValue(formData, "dueDate"),
+    deadlineAt: stringValue(formData, "deadlineAt"),
+    reminderMinutes: stringValue(formData, "reminderMinutes"),
+    reminderAt: stringValue(formData, "reminderAt"),
   };
 }
 

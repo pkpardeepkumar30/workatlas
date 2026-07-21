@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const PASSWORD_HASH_ROUNDS = 12;
+
 export const passwordSchema = z.string()
   .min(12, "Password must contain at least 12 characters.")
   .max(128, "Password must contain at most 128 characters.")

@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { DeleteProjectDialog, EditProjectDialog } from "@/components/project-actions";
+import { ProjectActionMenu } from "@/components/project-actions";
 import { ProjectForm } from "@/components/project-form";
 import { PriorityBadge } from "@/components/priority";
-import { CreateTaskDialog } from "@/components/task-form";
 import { Badge, Card, CardContent, CardHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { getProjects } from "@/lib/queries";
@@ -31,11 +30,7 @@ export default async function ProjectsPage() {
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <p className="text-xs text-slate-400">Target: {formatDate(project.targetDate)}</p>
-                  <div className="flex flex-wrap items-start gap-2">
-                    <CreateTaskDialog projectId={project.id} projectTitle={project.title} />
-                    <EditProjectDialog project={project} />
-                    <DeleteProjectDialog project={project} />
-                  </div>
+                  <ProjectActionMenu project={project} />
                 </div>
               </article>
             ))}

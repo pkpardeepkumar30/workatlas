@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TurnstileWidget } from "@/components/turnstile-widget";
+import { SuccessCheck } from "@/components/success-check";
 import { Button, inputClass } from "@/components/ui";
 
-function Message({ kind, children }: { kind: "error" | "success"; children: string }) {
-  return <p role={kind === "error" ? "alert" : "status"} className={kind === "error" ? "rounded-xl bg-red-50 p-3 text-sm text-red-700" : "rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800"}>{children}</p>;
+function Message({ kind, children, onDismiss }: { kind: "error" | "success"; children: string; onDismiss?: () => void }) {
+  if (kind === "success") return <SuccessCheck show label={children} onDismiss={onDismiss} />;
+  return <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{children}</p>;
 }
 
 export function ForgotPasswordForm({ turnstileSiteKey }: { turnstileSiteKey?: string }) {
@@ -40,6 +42,7 @@ export function ForgotPasswordForm({ turnstileSiteKey }: { turnstileSiteKey?: st
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  const [completed, setCompleted] = useState(false);
   const [pending, setPending] = useState(false);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,6 +57,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     const payload = await response.json().catch(() => ({}));
     setPending(false);
     if (!response.ok) return setMessage({ kind: "error", text: payload.error ?? "The password could not be reset." });
+    setCompleted(true);
     setMessage({ kind: "success", text: "Your password has been reset and all previous sessions were signed out." });
     event.currentTarget.reset();
   }
@@ -61,26 +65,28 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <label className="block text-sm font-medium text-slate-700">New password<input name="password" type="password" required minLength={12} autoComplete="new-password" className={`${inputClass} mt-1.5`} /></label>
     <p className="text-xs text-slate-500">Use at least 12 characters with uppercase, lowercase, and a number.</p>
     <label className="block text-sm font-medium text-slate-700">Confirm password<input name="passwordConfirmation" type="password" required minLength={12} autoComplete="new-password" className={`${inputClass} mt-1.5`} /></label>
-    {message && <Message kind={message.kind}>{message.text}</Message>}
+    {message && <Message kind={message.kind} onDismiss={() => setMessage(null)}>{message.text}</Message>}
     <Button disabled={pending} className="w-full">{pending ? "Resetting…" : "Reset password"}</Button>
-    {message?.kind === "success" && <p className="text-center text-sm"><Link href="/sign-in" className="font-semibold text-indigo-600">Sign in with the new password</Link></p>}
+    {completed && <p className="text-center text-sm"><Link href="/sign-in" className="font-semibold text-indigo-600">Sign in with the new password</Link></p>}
   </form>;
 }
 
 export function VerifyEmailForm({ token }: { token: string }) {
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  const [completed, setCompleted] = useState(false);
   const [pending, setPending] = useState(false);
   async function verify() {
     setPending(true);
     const response = await fetch("/api/auth/verify-email", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token }) });
     const payload = await response.json().catch(() => ({}));
     setPending(false);
+    if (response.ok) setCompleted(true);
     setMessage({ kind: response.ok ? "success" : "error", text: payload.message ?? payload.error ?? "Verification failed." });
   }
   return <div className="space-y-4">
-    {message && <Message kind={message.kind}>{message.text}</Message>}
-    {message?.kind !== "success" && <Button type="button" disabled={pending || !token} onClick={verify} className="w-full">{pending ? "Verifying…" : "Verify email"}</Button>}
-    {message?.kind === "success" && <Link href="/dashboard" className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Continue to WorkAtlas</Link>}
+    {message && <Message kind={message.kind} onDismiss={() => setMessage(null)}>{message.text}</Message>}
+    {!completed && <Button type="button" disabled={pending || !token} onClick={verify} className="w-full">{pending ? "Verifying…" : "Verify email"}</Button>}
+    {completed && <Link href="/dashboard" className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Continue to WorkAtlas</Link>}
   </div>;
 }
 
@@ -97,6 +103,6 @@ export function ResendVerificationButton() {
   }
   return <div className="space-y-3">
     <Button type="button" disabled={pending} onClick={resend} className="w-full">{pending ? "Sending…" : "Resend verification email"}</Button>
-    {message && <Message kind={message.kind}>{message.text}</Message>}
+    {message && <Message kind={message.kind} onDismiss={() => setMessage(null)}>{message.text}</Message>}
   </div>;
 }

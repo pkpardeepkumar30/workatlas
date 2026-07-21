@@ -5,12 +5,12 @@ import { z } from "zod";
 import { users } from "@/db/schema";
 import { isRegistrationEnabled, setSessionCookie } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { sendVerificationEmail } from "@/lib/email";
-import { getEmailEnvironment } from "@/lib/env";
+import { getEmailProvider, sendVerificationEmail } from "@/lib/email";
 import { enforceRateLimit, getClientIp, RateLimitError, rateLimitPolicies } from "@/lib/rate-limit";
-import { passwordSchema } from "@/lib/security-token-rules";
+import { PASSWORD_HASH_ROUNDS, passwordSchema } from "@/lib/security-token-rules";
 import { createEmailVerificationToken } from "@/lib/security-tokens";
 import { validateTurnstileIfEnabled } from "@/lib/turnstile";
+import { NEW_ACCOUNT_VERIFICATION } from "@/lib/verification-policy";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -36,22 +36,20 @@ export async function POST(request: Request) {
     if (existing[0]) {
       return NextResponse.json({ ok: true, redirectTo: "/sign-in?registration=received" });
     }
-    const environment = getEmailEnvironment();
-    const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-    const verifiedAt = environment.verificationRequired ? null : new Date();
+    if (!getEmailProvider()) {
+      return NextResponse.json({ error: "Account creation is temporarily unavailable because verification email delivery is not configured." }, { status: 503 });
+    }
+    const passwordHash = await bcrypt.hash(parsed.data.password, PASSWORD_HASH_ROUNDS);
     const [user] = await db.insert(users).values({
       name: parsed.data.name,
       email: parsed.data.email,
       passwordHash,
-      emailVerifiedAt: verifiedAt,
+      ...NEW_ACCOUNT_VERIFICATION,
     }).returning();
     await setSessionCookie(user);
-    if (environment.verificationRequired) {
-      const token = await createEmailVerificationToken(user.id);
-      await sendVerificationEmail(user, token);
-      return NextResponse.json({ ok: true, redirectTo: "/verify-email/pending" });
-    }
-    return NextResponse.json({ ok: true, redirectTo: "/dashboard" });
+    const token = await createEmailVerificationToken(user.id);
+    await sendVerificationEmail(user, token);
+    return NextResponse.json({ ok: true, redirectTo: "/verify-email/pending" });
   } catch (error) {
     if (error instanceof RateLimitError) {
       return NextResponse.json({ error: error.message }, { status: 429, headers: { "retry-after": String(error.retryAfterSeconds) } });

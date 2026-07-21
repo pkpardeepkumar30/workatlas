@@ -33,6 +33,9 @@ const taskInput: TaskInput = {
   status: "in_progress",
   priority: "critical",
   dueDate: "2026-07-30",
+  deadlineAt: "2026-07-30T16:00:00.000Z",
+  reminderMinutes: 60,
+  reminderAt: "2026-07-30T15:00:00.000Z",
 };
 
 function repository(overrides: Partial<MutationRepository> = {}): MutationRepository {

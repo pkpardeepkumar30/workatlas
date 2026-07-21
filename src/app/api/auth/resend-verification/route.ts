@@ -7,7 +7,7 @@ import { enforceRateLimit, getClientIp, RateLimitError, rateLimitPolicies } from
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in to request another verification email." }, { status: 401 });
-  if (user.emailVerifiedAt) return NextResponse.json({ message: "Your email address is already verified." });
+  if (!user.emailVerificationRequired || user.emailVerifiedAt) return NextResponse.json({ message: "Your email address is already verified." });
   try {
     await enforceRateLimit("resend-verification-user", user.id, rateLimitPolicies.resendVerification);
     await enforceRateLimit("resend-verification-ip", getClientIp(request), rateLimitPolicies.resendVerification);

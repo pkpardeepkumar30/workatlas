@@ -4,7 +4,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { emailVerificationTokens, passwordResetTokens, sessions, users } from "@/db/schema";
 import { db } from "@/lib/db";
 import { getAuthEnvironment } from "@/lib/env";
-import { applyPasswordResetEffects, passwordSchema } from "@/lib/security-token-rules";
+import { applyPasswordResetEffects, PASSWORD_HASH_ROUNDS, passwordSchema } from "@/lib/security-token-rules";
 
 const EMAIL_TOKEN_LIFETIME_MS = 24 * 60 * 60 * 1000;
 const RESET_TOKEN_LIFETIME_MS = 60 * 60 * 1000;
@@ -66,7 +66,7 @@ export async function createPasswordResetToken(userId: string, now = new Date())
 export async function resetPasswordWithToken(token: string, password: string, now = new Date()) {
   const parsedPassword = passwordSchema.safeParse(password);
   if (!parsedPassword.success) return { ok: false as const, error: parsedPassword.error.issues[0]?.message ?? "Invalid password." };
-  const passwordHash = await bcrypt.hash(parsedPassword.data, 12);
+  const passwordHash = await bcrypt.hash(parsedPassword.data, PASSWORD_HASH_ROUNDS);
   const tokenHash = hashSecurityToken(token);
   return db.transaction(async (transaction) => {
     const [claimed] = await transaction.update(passwordResetTokens)

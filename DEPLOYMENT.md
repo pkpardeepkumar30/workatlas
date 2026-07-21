@@ -10,6 +10,8 @@ In every production mode:
 - terminate HTTPS before the application;
 - set `SESSION_COOKIE_SECURE=true`;
 - store secrets outside Git;
+- configure Resend before allowing new registrations and run the authenticated reminder scheduler at least every five minutes;
+- use Neon's managed encryption at rest and verified TLS connections (`sslmode=verify-full`);
 - use committed migrations through `npm run db:migrate`;
 - verify them with `npm run db:migrations:verify`; destructive SQL is blocked from automation;
 - back up PostgreSQL before schema or infrastructure changes;

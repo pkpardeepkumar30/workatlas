@@ -69,3 +69,24 @@ export function sendPasswordResetEmail(user: { email: string; name: string }, to
     purpose: "Reset your password by opening this secure, single-use link within one hour",
   });
 }
+
+export async function sendTaskReminderEmail(input: {
+  email: string;
+  name: string;
+  taskTitle: string;
+  projectTitle: string;
+  deadlineAt: Date;
+}) {
+  const environment = getEmailEnvironment();
+  const provider = getEmailProvider();
+  if (!provider) return false;
+  const taskUrl = new URL("/dashboard/tasks", environment.NEXT_PUBLIC_APP_URL).toString();
+  const deadline = input.deadlineAt.toISOString();
+  await provider.send({
+    to: input.email,
+    subject: `Task reminder: ${input.taskTitle}`,
+    text: `Hello ${input.name},\n\nYour task "${input.taskTitle}" in "${input.projectTitle}" is due at ${deadline}.\n\nOpen WorkAtlas: ${taskUrl}`,
+    html: `<p>Hello ${escapeHtml(input.name)},</p><p>Your task <strong>${escapeHtml(input.taskTitle)}</strong> in <strong>${escapeHtml(input.projectTitle)}</strong> is due at ${escapeHtml(deadline)}.</p><p><a href="${escapeHtml(taskUrl)}">Open WorkAtlas</a></p>`,
+  });
+  return true;
+}

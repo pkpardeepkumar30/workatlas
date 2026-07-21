@@ -4,6 +4,14 @@ import type { MutationRepository } from "@/lib/mutation-service";
 import type { KanbanOrderItem, ProjectInput, TaskInput } from "@/lib/mutation-schemas";
 import { db } from "@/lib/db";
 
+function taskStorageValues(input: TaskInput) {
+  return {
+    ...input,
+    deadlineAt: input.deadlineAt ? new Date(input.deadlineAt) : null,
+    reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
+  };
+}
+
 export const mutationRepository: MutationRepository = {
   async findOwnedProject(ownerId, projectId) {
     const [project] = await db.select({ id: projects.id }).from(projects)
@@ -40,7 +48,7 @@ export const mutationRepository: MutationRepository = {
     return db.transaction(async (transaction) => {
       const [result] = await transaction.select({ value: max(tasks.position) }).from(tasks)
         .where(and(eq(tasks.ownerId, ownerId), eq(tasks.status, input.status)));
-      const [task] = await transaction.insert(tasks).values({ ownerId, ...input, position: (result?.value ?? -1) + 1 }).returning({ id: tasks.id });
+      const [task] = await transaction.insert(tasks).values({ ownerId, ...taskStorageValues(input), position: (result?.value ?? -1) + 1 }).returning({ id: tasks.id });
       await transaction.update(projects).set({ updatedAt: new Date() })
         .where(and(eq(projects.id, input.projectId), eq(projects.ownerId, ownerId)));
       return task;
@@ -54,7 +62,8 @@ export const mutationRepository: MutationRepository = {
   },
 
   async updateTask(ownerId, taskId, input: TaskInput & { position?: number }) {
-    const result = await db.update(tasks).set({ ...input, updatedAt: new Date() })
+    const { position, ...taskInput } = input;
+    const result = await db.update(tasks).set({ ...taskStorageValues(taskInput), position, updatedAt: new Date() })
       .where(and(eq(tasks.id, taskId), eq(tasks.ownerId, ownerId)));
     return Boolean(result.rowCount);
   },
