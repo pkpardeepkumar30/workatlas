@@ -23,8 +23,10 @@ This guide keeps WorkAtlas as one Next.js modular monolith. Vercel runs the appl
 | `REGISTRATION_ENABLED` | No | Server only | `true` for open registration; `false` for invite-only mode |
 | `OPENAI_API_KEY` | No | Server only | Enables the AI planner |
 | `OPENAI_MODEL` | No | Server only | Optional model override |
-| `RESEND_API_KEY` | Required for registration/reminders | Server only | Resend credential for verification, password-reset, and reminder delivery |
-| `EMAIL_FROM` | Required for registration/reminders | Server only | Sender address on a verified email domain |
+| `EMAIL_PROVIDER` | Yes | Server only | Controlled provider: `brevo` (default) or `resend` |
+| `RESEND_API_KEY` | When using Resend | Server only | Resend credential for verification, password-reset, and reminder delivery |
+| `BREVO_API_KEY` | When using Brevo | Server only | Brevo transactional-email API credential |
+| `EMAIL_FROM` | Required for email | Server only | Verified sender in `WorkAtlas <sender@example.com>` format |
 | `CRON_SECRET` | Required for reminders | Server only | At least 32 characters; authenticates only the controlled reminder worker |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | No | Public | Cloudflare Turnstile widget key |
 | `TURNSTILE_SECRET_KEY` | No | Server only | Cloudflare Siteverify secret |
@@ -131,8 +133,10 @@ Never force-push deployment preparation over an existing remote.
    REGISTRATION_ENABLED=true
    OPENAI_API_KEY=<optional>
    OPENAI_MODEL=<optional>
-   RESEND_API_KEY=<required before opening registration>
-   EMAIL_FROM=<sender on a verified Resend domain>
+   EMAIL_PROVIDER=brevo
+   RESEND_API_KEY=<required when EMAIL_PROVIDER=resend>
+   BREVO_API_KEY=<required when EMAIL_PROVIDER=brevo>
+   EMAIL_FROM=WorkAtlas <verified sender address>
    CRON_SECRET=<generated random value of at least 32 characters>
    NEXT_PUBLIC_TURNSTILE_SITE_KEY=<optional>
    TURNSTILE_SECRET_KEY=<optional>
@@ -200,7 +204,7 @@ For a VPS, keep PostgreSQL private, terminate HTTPS at a trusted proxy, set `SES
 
 ### Custom domain later
 
-In Vercel, open **Project Settings → Domains**, add the chosen domain, and apply the displayed DNS records. When HTTPS is ready, change `NEXT_PUBLIC_APP_URL`, update Turnstile hostname restrictions, and redeploy. Resend sending-domain DNS verification is a separate process and is still required before changing `EMAIL_FROM`.
+In Vercel, open **Project Settings → Domains**, add the chosen domain, and apply the displayed DNS records. When HTTPS is ready, change `NEXT_PUBLIC_APP_URL`, update Turnstile hostname restrictions, and redeploy. If you later replace the verified Brevo sender with an address on a custom domain, authenticate that sending domain in Brevo before changing `EMAIL_FROM`.
 
 ## Operational limitations
 

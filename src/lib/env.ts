@@ -17,7 +17,9 @@ export const deploymentEnvSchema = z.object({
   OPENAI_API_KEY: optionalString,
   OPENAI_MODEL: optionalString,
   REGISTRATION_ENABLED: z.enum(["true", "false"]).default("true"),
+  EMAIL_PROVIDER: z.enum(["resend", "brevo"]).default("brevo"),
   RESEND_API_KEY: optionalString,
+  BREVO_API_KEY: optionalString,
   EMAIL_FROM: optionalString,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
   TURNSTILE_SECRET_KEY: optionalString,
@@ -91,7 +93,9 @@ export function getAuthEnvironment(environment: NodeJS.ProcessEnv = process.env)
 
 export function getEmailEnvironment(environment: NodeJS.ProcessEnv = process.env) {
   const result = z.object({
+    EMAIL_PROVIDER: z.enum(["resend", "brevo"]).default("brevo"),
     RESEND_API_KEY: optionalString,
+    BREVO_API_KEY: optionalString,
     EMAIL_FROM: optionalString,
     NEXT_PUBLIC_APP_URL: z.string().url(),
   }).safeParse(environment);

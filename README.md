@@ -203,6 +203,8 @@ New security features use these environment variables:
 
 ```text
 RESEND_API_KEY=
+BREVO_API_KEY=
+EMAIL_PROVIDER=brevo
 EMAIL_FROM=
 CRON_SECRET=
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
@@ -214,7 +216,9 @@ Verification and reset tokens come from cryptographically secure random bytes; o
 
 Account email addresses are currently immutable: there is no client or server endpoint that can change an authenticated user's email. A future email-change workflow must require current-account proof and verification of the replacement address before committing the change.
 
-Add and verify a sending domain in Resend, create an API key, and set `RESEND_API_KEY` plus `EMAIL_FROM` in Vercel Production before opening registration. New registration fails safely without creating an account if delivery is not configured. Existing users remain able to sign in. Verification is a per-account database policy and cannot be disabled for newly created accounts with a client request or YAML setting.
+Brevo is the default provider. Choose it explicitly with `EMAIL_PROVIDER=brevo`, or switch to the optional Resend integration with `EMAIL_PROVIDER=resend`. Brevo uses `BREVO_API_KEY`; Resend uses `RESEND_API_KEY`; both require `EMAIL_FROM` in `Name <address@example.com>` format. Resend's `onboarding@resend.dev` testing sender can deliver only to the Resend account address. Brevo can use a verified individual sender for free multi-recipient testing, although an authenticated custom domain remains recommended for deliverability.
+
+Configure and test delivery before opening registration. New registration now creates its session only after the first verification message is accepted. If token creation or initial delivery fails, the newly inserted pending account is removed with its dependent token, preventing a partially-created account. Existing users remain able to sign in. Verification is a per-account database policy and cannot be disabled for newly created accounts with a client request or YAML setting.
 
 ### Deadline reminder scheduler
 

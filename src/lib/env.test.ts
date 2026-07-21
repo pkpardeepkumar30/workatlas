@@ -19,6 +19,13 @@ describe("deployment environment", () => {
     expect(result.DATABASE_URL_DIRECT).toBeUndefined();
     expect(result.OPENAI_API_KEY).toBeUndefined();
     expect(result.OPENAI_MODEL).toBeUndefined();
+    expect(result.EMAIL_PROVIDER).toBe("brevo");
+  });
+
+  it("accepts Brevo as the controlled transactional email provider", () => {
+    const result = deploymentEnvSchema.parse({ ...validEnvironment, EMAIL_PROVIDER: "brevo", BREVO_API_KEY: "xkeysib-private", EMAIL_FROM: "WorkAtlas <sender@example.com>" });
+    expect(result.EMAIL_PROVIDER).toBe("brevo");
+    expect(result.BREVO_API_KEY).toBe("xkeysib-private");
   });
 
   it("rejects a short session secret", () => {

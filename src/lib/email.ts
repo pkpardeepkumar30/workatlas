@@ -24,14 +24,44 @@ export class ResendEmailProvider implements TransactionalEmailProvider {
   }
 }
 
+export class BrevoEmailProvider implements TransactionalEmailProvider {
+  constructor(private readonly apiKey: string, private readonly from: string) {}
+
+  async send(message: TransactionalEmail) {
+    const sender = parseSender(this.from);
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": this.apiKey, accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: message.to }],
+        subject: message.subject,
+        textContent: message.text,
+        htmlContent: message.html,
+      }),
+    });
+    if (!response.ok) throw new Error(`Transactional email provider returned ${response.status}.`);
+  }
+}
+
+export function parseSender(value: string) {
+  const match = value.match(/^\s*(.*?)\s*<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/);
+  if (match) return { name: match[1] || "WorkAtlas", email: match[2] };
+  if (/^[^<>\s]+@[^<>\s]+$/.test(value.trim())) return { name: "WorkAtlas", email: value.trim() };
+  throw new Error("EMAIL_FROM must be an email address or use Name <email@example.com> format.");
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character);
 }
 
 export function getEmailProvider(): TransactionalEmailProvider | null {
   const environment = getEmailEnvironment();
-  if (!environment.RESEND_API_KEY || !environment.EMAIL_FROM) return null;
-  return new ResendEmailProvider(environment.RESEND_API_KEY, environment.EMAIL_FROM);
+  if (!environment.EMAIL_FROM) return null;
+  if (environment.EMAIL_PROVIDER === "brevo") {
+    return environment.BREVO_API_KEY ? new BrevoEmailProvider(environment.BREVO_API_KEY, environment.EMAIL_FROM) : null;
+  }
+  return environment.RESEND_API_KEY ? new ResendEmailProvider(environment.RESEND_API_KEY, environment.EMAIL_FROM) : null;
 }
 
 async function sendLinkEmail({ to, name, path, subject, purpose }: { to: string; name: string; path: string; subject: string; purpose: string }) {

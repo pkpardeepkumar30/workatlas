@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { users } from "@/db/schema";
@@ -7,6 +7,7 @@ import { isRegistrationEnabled, setSessionCookie } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getEmailProvider, sendVerificationEmail } from "@/lib/email";
 import { enforceRateLimit, getClientIp, RateLimitError, rateLimitPolicies } from "@/lib/rate-limit";
+import { createDeliverablePendingAccount } from "@/lib/registration-service";
 import { PASSWORD_HASH_ROUNDS, passwordSchema } from "@/lib/security-token-rules";
 import { createEmailVerificationToken } from "@/lib/security-tokens";
 import { validateTurnstileIfEnabled } from "@/lib/turnstile";
@@ -40,15 +41,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Account creation is temporarily unavailable because verification email delivery is not configured." }, { status: 503 });
     }
     const passwordHash = await bcrypt.hash(parsed.data.password, PASSWORD_HASH_ROUNDS);
-    const [user] = await db.insert(users).values({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      passwordHash,
-      ...NEW_ACCOUNT_VERIFICATION,
-    }).returning();
+    const user = await createDeliverablePendingAccount({
+      async createPendingAccount() {
+        const [account] = await db.insert(users).values({
+          name: parsed.data.name,
+          email: parsed.data.email,
+          passwordHash,
+          ...NEW_ACCOUNT_VERIFICATION,
+        }).returning();
+        return account;
+      },
+      issueVerificationToken: createEmailVerificationToken,
+      sendVerification: sendVerificationEmail,
+      async removePendingAccount(userId) {
+        await db.delete(users).where(and(
+          eq(users.id, userId),
+          eq(users.emailVerificationRequired, true),
+          isNull(users.emailVerifiedAt),
+        ));
+      },
+    });
     await setSessionCookie(user);
-    const token = await createEmailVerificationToken(user.id);
-    await sendVerificationEmail(user, token);
     return NextResponse.json({ ok: true, redirectTo: "/verify-email/pending" });
   } catch (error) {
     if (error instanceof RateLimitError) {
