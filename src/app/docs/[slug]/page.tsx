@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Markdown } from "@/components/markdown";
 import { SiteHeader } from "@/components/site-header";
@@ -13,6 +14,16 @@ async function loadDocument(slug: string) {
   } catch {
     notFound();
   }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const doc = await loadDocument(slug);
+  return {
+    title: doc.title,
+    description: doc.description,
+    alternates: { canonical: `/docs/${slug}` },
+  };
 }
 
 export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {

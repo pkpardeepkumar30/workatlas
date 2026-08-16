@@ -4,10 +4,9 @@ import { getPageConfig } from "@/config/loader";
 
 export async function generateMetadata(): Promise<Metadata> {
   const page = await getPageConfig("/");
-  return page ? { title: page.title, description: page.description } : {};
+  return page ? { title: page.title, description: page.description, alternates: { canonical: "/" } } : {};
 }
 
 export default function HomePage() {
   return <PublicPageRenderer route="/" />;
 }
-

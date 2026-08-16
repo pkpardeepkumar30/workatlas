@@ -14,12 +14,12 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string[] }> }): Promise<Metadata> {
   const { slug } = await params;
-  const page = await getPageConfig(routeFromSlug(slug));
-  return page ? { title: page.title, description: page.description } : {};
+  const route = routeFromSlug(slug);
+  const page = await getPageConfig(route);
+  return page ? { title: page.title, description: page.description, alternates: { canonical: route } } : {};
 }
 
 export default async function ConfiguredPublicPage({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await params;
   return <PublicPageRenderer route={routeFromSlug(slug)} />;
 }
-

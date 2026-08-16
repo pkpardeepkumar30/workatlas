@@ -11,11 +11,25 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: environment.appName,
     title: { default: site.name, template: `%s | ${site.name}` },
     description: site.description,
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+      },
+    },
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION
+        ?? "QZKlx20EzRZOmyXTxim9MDEhPGHFTNe71ow3-tpzN4U",
+    },
     openGraph: {
       type: "website",
       title: site.name,
       description: site.description,
       siteName: site.name,
+      url: environment.appUrl,
     },
   };
 }

@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { listContentDocuments } from "@/lib/content";
+
+export const metadata: Metadata = {
+  title: "Documentation",
+  description: "Guides for configuring, deploying, and extending WorkAtlas.",
+  alternates: { canonical: "/docs" },
+};
 
 export default async function DocsPage() {
   const docs = await listContentDocuments("docs");
